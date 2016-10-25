@@ -1037,13 +1037,14 @@ bool interpreter::run_operation(const operation& op, const transaction& tx,
         case opcode::pushdata1:
         case opcode::pushdata2:
         case opcode::pushdata4:
-            report("Invalid push operation in script.");
-            return true;
+            report("Push data operation in script.");
+            return false;
 
         case opcode::negative_1:
             return op_negative_1(context);
 
         case opcode::reserved:
+            report("Reserved operation in script.");
             return false;
 
         case opcode::op_1:
@@ -1068,6 +1069,7 @@ bool interpreter::run_operation(const operation& op, const transaction& tx,
             return true;
 
         case opcode::ver:
+            report("Dead operation (ver) in script.");
             return false;
 
         case opcode::if_:
@@ -1078,7 +1080,7 @@ bool interpreter::run_operation(const operation& op, const transaction& tx,
 
         case opcode::verif:
         case opcode::vernotif:
-            report("Disabled opcodes (verif/vernotif) in script.");
+            report("Disabled operation (verif/vernotif) in script.");
             return false;
 
         case opcode::else_:
@@ -1091,6 +1093,7 @@ bool interpreter::run_operation(const operation& op, const transaction& tx,
             return op_verify(context);
 
         case opcode::return_:
+            report("Return (null) operation in script.");
             return false;
 
         case opcode::toaltstack:
@@ -1151,7 +1154,7 @@ bool interpreter::run_operation(const operation& op, const transaction& tx,
         case opcode::substr:
         case opcode::left:
         case opcode::right:
-            report("Disabled splice operations in script.");
+            report("Disabled splice operation in script.");
             return false;
 
         case opcode::tuck:
@@ -1164,7 +1167,7 @@ bool interpreter::run_operation(const operation& op, const transaction& tx,
         case opcode::and_:
         case opcode::or_:
         case opcode::xor_:
-            report("Disabled bit logic operations in script.");
+            report("Disabled bit logic operation in script.");
             return false;
 
         case opcode::equal:
@@ -1175,6 +1178,7 @@ bool interpreter::run_operation(const operation& op, const transaction& tx,
 
         case opcode::reserved1:
         case opcode::reserved2:
+            report("Reserved operation in script.");
             return false;
 
         case opcode::op_1add:
@@ -1185,7 +1189,7 @@ bool interpreter::run_operation(const operation& op, const transaction& tx,
 
         case opcode::op_2mul:
         case opcode::op_2div:
-            report("Disabled opcodes (2mul/2div) in script.");
+            report("Disabled operation (2mul/2div) in script.");
             return false;
 
         case opcode::negate:
@@ -1267,7 +1271,7 @@ bool interpreter::run_operation(const operation& op, const transaction& tx,
 
         case opcode::codeseparator:
             report("Invalid operation (codeseparator) in script.");
-            return true;
+            return false;
 
         case opcode::checksig:
             return op_check_sig(context, script, tx, input_index,
