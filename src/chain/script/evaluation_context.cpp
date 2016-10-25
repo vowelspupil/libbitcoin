@@ -19,18 +19,19 @@
  */
 #include <bitcoin/bitcoin/chain/script/evaluation_context.hpp>
 
+#include <bitcoin/bitcoin/constants.hpp>
 #include <bitcoin/bitcoin/utility/data.hpp>
 
 namespace libbitcoin {
 namespace chain {
 
 evaluation_context::evaluation_context(uint32_t flags)
-  : flags(flags)
+  : flags(flags), op_count_(0)
 {
 }
 
 evaluation_context::evaluation_context(uint32_t flags, const data_stack& stack)
-  : flags(flags), stack(stack)
+  : flags(flags), stack(stack), op_count_(0)
 {
 }
 
@@ -40,6 +41,38 @@ data_chunk evaluation_context::pop_stack()
     stack.pop_back();
     return value;
 }
+
+// Operation count.
+//-----------------------------------------------------------------------------
+
+inline bool overflow_op_count(size_t op_count)
+{
+    return op_count > op_counter_limit;
+}
+
+void evaluation_context::reset_op_count()
+{
+    op_count_ = 0;
+}
+
+bool evaluation_context::update_op_count(const operation& op)
+{
+    if (opcode_is_operation(op.code()))
+        ++op_count_;
+
+    return !overflow_op_count(op_count_);
+}
+
+bool evaluation_context::update_op_count(int32_t multisig_pubkeys)
+{
+    // bit.ly/2d1bsdB
+    if (multisig_pubkeys < 0 || multisig_pubkeys > max_script_public_key_count)
+        return false;
+
+    op_count_ += multisig_pubkeys;
+    return !overflow_op_count(op_count_);
+}
+
 
 } // namespace chain
 } // namespace libbitcoin

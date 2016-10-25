@@ -35,14 +35,20 @@ public:
     evaluation_context(uint32_t flags);
     evaluation_context(uint32_t flags, const data_stack& stack);
 
+    void reset_op_count();
+    bool update_op_count(const operation& op);
+    bool update_op_count(int32_t multisig_pubkeys);
+
     data_chunk pop_stack();
 
     operation::stack::const_iterator code_begin;
-    uint64_t operation_counter;
     data_stack stack;
     data_stack alternate;
-    conditional_stack conditional;
+    conditional_stack condition;
     uint32_t flags;
+
+private:
+    uint64_t op_count_;
 };
 
 } // namespace chain

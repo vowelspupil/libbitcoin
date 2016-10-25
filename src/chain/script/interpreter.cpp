@@ -52,33 +52,6 @@ inline void report(const char*)
     ////BITCOIN_ASSERT_MSG(false, message);
 }
 
-// Operation count.
-//-----------------------------------------------------------------------------
-
-inline bool overflow_op_count(size_t op_count)
-{
-    return op_count > op_counter_limit;
-}
-
-static bool update_op_counter(const operation& op, evaluation_context& context)
-{
-    if (opcode_is_operation(op.code()))
-        ++context.operation_counter;
-
-    return !overflow_op_count(context.operation_counter);
-}
-
-static bool update_op_counter(int32_t multisig_pubkeys,
-    evaluation_context& context)
-{
-    // bit.ly/2d1bsdB
-    if (multisig_pubkeys < 0 || multisig_pubkeys > max_script_public_key_count)
-        return false;
-
-    context.operation_counter += multisig_pubkeys;
-    return !overflow_op_count(context.operation_counter);
-}
-
 // Stack condition.
 //-----------------------------------------------------------------------------
 
@@ -211,7 +184,7 @@ static bool op_if(evaluation_context& context)
 {
     auto value = false;
 
-    if (context.conditional.succeeded())
+    if (context.condition.succeeded())
     {
         if (context.stack.empty())
             return false;
@@ -219,7 +192,7 @@ static bool op_if(evaluation_context& context)
         value = stack_to_bool(context.pop_stack());
     }
 
-    context.conditional.open(value);
+    context.condition.open(value);
     return true;
 }
 
@@ -230,25 +203,25 @@ static bool op_notif(evaluation_context& context)
     if (!op_if(context))
         return false;
 
-    context.conditional.negate();
+    context.condition.negate();
     return true;
 }
 
 static bool op_else(evaluation_context& context)
 {
-    if (context.conditional.closed())
+    if (context.condition.closed())
         return false;
 
-    context.conditional.negate();
+    context.condition.negate();
     return true;
 }
 
 static bool op_endif(evaluation_context& context)
 {
-    if (context.conditional.closed())
+    if (context.condition.closed())
         return false;
 
-    context.conditional.close();
+    context.condition.close();
     return true;
 }
 
@@ -797,7 +770,7 @@ static signature_parse_result op_check_sig_verify(evaluation_context& context,
     chain::script script_code;
 
     for (auto it = context.code_begin; it != script.operations().end(); ++it)
-        if (it->data() != endorsement && it->code() != opcode::codeseparator)
+        if (it->code() != opcode::codeseparator && it->data() != endorsement)
             script_code.operations().push_back(*it);
 
     if (!strict && !parse_signature(signature, distinguished, false))
@@ -834,7 +807,7 @@ static signature_parse_result op_check_multisig_verify(
     if (!pop_unary(context, pubkeys_count))
         return signature_parse_result::invalid;
 
-    if (!update_op_counter(pubkeys_count, context))
+    if (!context.update_op_count(pubkeys_count))
         return signature_parse_result::invalid;
 
     data_stack pubkeys;
@@ -973,7 +946,7 @@ bool interpreter::run(const transaction& tx, uint32_t input_index,
         return false;
 
     auto& ops = script.operations();
-    context.operation_counter = 0;
+    context.reset_op_count();
     context.code_begin = ops.begin();
 
     // If any op returns false the execution terminates and is false.
@@ -981,7 +954,7 @@ bool interpreter::run(const transaction& tx, uint32_t input_index,
         if (!next_operation(tx, input_index, it, script, context, flags))
             return false;
 
-    return context.conditional.closed();
+    return context.condition.closed();
 }
 
 bool interpreter::next_operation(const transaction& tx, uint32_t input_index,
@@ -994,13 +967,13 @@ bool interpreter::next_operation(const transaction& tx, uint32_t input_index,
     if (op.data().size() > max_data_script_size)
         return false;
 
-    if (!update_op_counter(op, context))
+    if (!context.update_op_count(op))
         return false;
 
     if (opcode_is_disabled(op.code()))
         return false;
 
-    if (!context.conditional.succeeded() && !opcode_is_condition(op.code()))
+    if (!opcode_is_condition(op.code()) && !context.condition.succeeded())
         return true;
 
     // push data to the stack
