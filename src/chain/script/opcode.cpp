@@ -536,9 +536,9 @@ bool opcode_is_disabled(opcode code)
         case opcode::rshift:
             return true;
 
-        // These opcodes aren't in the main Satoshi EvalScript
-        // switch-case so the script loop always fails regardless of
-        // whether these are executed or not.
+        // The 'ver' opcodes aren't in the main Satoshi EvalScript switch-case.
+        // So they are disabled even though they are not listed in as such.
+        case opcode::ver:
         case opcode::verif:
         case opcode::vernotif:
             return true;
