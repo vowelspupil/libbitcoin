@@ -355,7 +355,9 @@ include_bitcoin_bitcoin_chain_script_HEADERS = \
     include/bitcoin/bitcoin/chain/script/interpreter.hpp \
     include/bitcoin/bitcoin/chain/script/opcode.hpp \
     include/bitcoin/bitcoin/chain/script/operation.hpp \
+    include/bitcoin/bitcoin/chain/script/rule_fork.hpp \
     include/bitcoin/bitcoin/chain/script/script.hpp \
+    include/bitcoin/bitcoin/chain/script/script_pattern.hpp \
     include/bitcoin/bitcoin/chain/script/sighash_algorithm.hpp
 
 include_bitcoin_bitcoin_configdir = ${includedir}/bitcoin/bitcoin/config

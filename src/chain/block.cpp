@@ -30,6 +30,7 @@
 #include <utility>
 #include <bitcoin/bitcoin/chain/chain_state.hpp>
 #include <bitcoin/bitcoin/chain/script/opcode.hpp>
+#include <bitcoin/bitcoin/chain/script/rule_fork.hpp>
 #include <bitcoin/bitcoin/chain/script/script.hpp>
 #include <bitcoin/bitcoin/config/checkpoint.hpp>
 #include <bitcoin/bitcoin/constants.hpp>
@@ -585,7 +586,7 @@ bool block::is_valid_coinbase_script(size_t height) const
     // Create the expected script as a byte vector.
     script expected_script;
     script_number number(height);
-    expected_script.operations().push_back({ opcode::special, number.data() });
+    expected_script.operations().emplace_back(opcode::special, number.data());
     const auto expected = expected_script.to_data(false);
 
     // Require that the coinbase script match the expected coinbase script.

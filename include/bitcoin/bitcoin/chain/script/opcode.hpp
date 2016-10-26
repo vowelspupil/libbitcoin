@@ -23,20 +23,27 @@
 #include <cstdint>
 #include <string>
 #include <bitcoin/bitcoin/define.hpp>
+#include <bitcoin/bitcoin/utility/assert.hpp>
 #include <bitcoin/bitcoin/utility/data.hpp>
 
 namespace libbitcoin {
 namespace chain {
 
+// The 'ver' opcodes aren't in the main Satoshi EvalScript switch-case.
+// So they are 'disabled' even though they are not listed in that code as such.
+// We don't carry mnemonics for 'disabled' opcodes, as they are simply invalid.
+
 enum class opcode : uint8_t
 {
+    //-------------------------------------------------------------------------
+    // These are data.
+
     zero = 0,
-    special = 1,
+    /* opcode::special range 1-76, wire opcodes but not internal opcodes */
     pushdata1 = 76,
     pushdata2 = 77,
     pushdata4 = 78,
     negative_1 = 79,
-    reserved = 80,      // does nothing
     op_1 = 81,
     op_2 = 82,
     op_3 = 83,
@@ -52,25 +59,29 @@ enum class opcode : uint8_t
     op_13 = 93,
     op_14 = 94,
     op_15 = 95,
-    op_16 = 96,         // all after are counted operations
+    op_16 = 96,
+
+    //-------------------------------------------------------------------------
+    // These are executable.
+
     nop = 97,
-    ver = 98,
+    disabled_98 = 98,
     if_ = 99,
     notif = 100,
-    verif = 101,
-    vernotif = 102,
+    disabled_101 = 101,
+    disabled_102 = 102,
     else_ = 103,
     endif = 104,
     verify = 105,
     return_ = 106,
     toaltstack = 107,
     fromaltstack = 108,
-    op_2drop = 109,
-    op_2dup = 110,
-    op_3dup = 111,
-    op_2over = 112,
-    op_2rot = 113,
-    op_2swap = 114,
+    drop2 = 109,
+    dup2 = 110,
+    dup3 = 111,
+    over2 = 112,
+    rot2 = 113,
+    swap2 = 114,
     ifdup = 115,
     depth = 116,
     drop = 117,
@@ -82,34 +93,34 @@ enum class opcode : uint8_t
     rot = 123,
     swap = 124,
     tuck = 125,
-    cat = 126,          // disabled
-    substr = 127,       // disabled
-    left = 128,         // disabled
-    right = 129,        // disabled
+    disabled_126 = 126,
+    disabled_127 = 127,
+    disabled_128 = 128,
+    disabled_129 = 129,
     size = 130,
-    invert = 131,       // disabled
-    and_ = 132,         // disabled
-    or_ = 133,          // disabled
-    xor_ = 134,         // disabled
+    disabled_131 = 131,
+    disabled_132 = 132,
+    disabled_133 = 133,
+    disabled_134 = 134,
     equal = 135,
     equalverify = 136,
-    reserved1 = 137,
-    reserved2 = 138,
-    op_1add = 139,
-    op_1sub = 140,
-    op_2mul = 141,      // disabled
-    op_2div = 142,      // disabled
+    disabled_137 = 137,
+    disabled_138 = 138,
+    add1 = 139,
+    sub1 = 140,
+    disabled_141 = 141,
+    disabled_142 = 142,
     negate = 143,
     abs = 144,
     not_ = 145,
-    op_0notequal = 146,
+    nonzero = 146,
     add = 147,
     sub = 148,
-    mul = 149,          // disabled
-    div = 150,          // disabled
-    mod = 151,          // disabled
-    lshift = 152,       // disabled
-    rshift = 153,       // disabled
+    disabled_149 = 149,
+    disabled_150 = 150,
+    disabled_151 = 151,
+    disabled_152 = 152,
+    disabled_153 = 153,
     booland = 154,
     boolor = 155,
     numequal = 156,
@@ -132,90 +143,31 @@ enum class opcode : uint8_t
     checksigverify = 173,
     checkmultisig = 174,
     checkmultisigverify = 175,
-    op_nop1 = 176,
-    op_nop2 = 177,
-    checklocktimeverify = op_nop2,
-    op_nop3 = 178,
-    op_nop4 = 179,
-    op_nop5 = 180,
-    op_nop6 = 181,
-    op_nop7 = 182,
-    op_nop8 = 183,
-    op_nop9 = 184,
-    op_nop10 = 185,
+    nop1 = 176,
+    nop2 = 177,
+    checklocktimeverify = nop2,
+    nop3 = 178,
+    nop4 = 179,
+    nop5 = 180,
+    nop6 = 181,
+    nop7 = 182,
+    nop8 = 183,
+    nop9 = 184,
+    nop10 = 185,
 
-    // These are internal use sentinels, NOT opcodes.
-    // The specific values of these only need to differ from actual opcodes.
+    //-------------------------------------------------------------------------
+    // These are sentinels (values are arbitry).
+
     bad_operation,
+    special,
     raw_data
 };
 
-enum rule_fork : uint32_t
-{
-    no_rules = 0,
-
-    /// pay-to-script-hash enabled
-    bip16_rule = 1 << 0,
-
-    /// no duplicated unspent transaction ids
-    bip30_rule = 1 << 1,
-
-    /// coinbase must include height
-    bip34_rule = 1 << 2,
-
-    /// strict DER signatures required
-    bip66_rule = 1 << 3,
-
-    /// nop2 becomes check locktime verify
-    bip65_rule = 1 << 4,
-
-    all_rules = 0xffffffff
-};
-
-/// Determine if code is in the op_n range.
-inline bool within_op_n(opcode code)
-{
-    static const auto op_1 = static_cast<uint8_t>(opcode::op_1);
-    static const auto op_16 = static_cast<uint8_t>(opcode::op_16);
-    const auto value = static_cast<uint8_t>(code);
-    return op_1 <= value && value <= op_16;
-}
-
-/// Return the op_n index (i.e. value of n).
-inline uint8_t decode_op_n(opcode code)
-{
-    static const auto op_0 = static_cast<uint8_t>(opcode::op_1) - 1;
-    BITCOIN_ASSERT(within_op_n(code));
-    const auto value = static_cast<uint8_t>(code);
-    return value - op_0;
-}
-
-/// Convert an opcode to a byte.
-inline uint8_t to_byte_code(opcode code)
-{
-    return static_cast<uint8_t>(code);
-}
-
-/// Conver the opcode to a mnemonic string.
+/// Convert the opcode to a mnemonic string.
 BC_API std::string opcode_to_string(opcode value, uint32_t flags);
 
 /// Convert a string to an opcode.
-BC_API opcode string_to_opcode(const std::string& value);
-
-/// Convert data to an opcode.
-BC_API opcode data_to_opcode(const data_chunk& value);
-
-/// Determine if the opcode is disabled (not actually an opcode).
-BC_API bool opcode_is_disabled(opcode code);
-
-/// Determine if the opcode pushes empty data.
-BC_API bool opcode_is_empty_pusher(opcode code);
-
-/// Determine if the opcode is a conditional.
-BC_API bool opcode_is_condition(opcode code);
-
-/// Determine if the opcode is a counted operation.
-BC_API bool opcode_is_operation(opcode code);
+BC_API opcode opcode_from_string(const std::string& value);
 
 } // namespace chain
 } // namespace libbitcoin

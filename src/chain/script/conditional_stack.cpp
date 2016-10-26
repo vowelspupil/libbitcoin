@@ -20,6 +20,7 @@
 #include <bitcoin/bitcoin/chain/script/conditional_stack.hpp>
 
 #include <algorithm>
+#include <bitcoin/bitcoin/utility/assert.hpp>
 
 namespace libbitcoin {
 namespace chain {
@@ -47,11 +48,13 @@ void conditional_stack::open(bool value)
 
 void conditional_stack::negate()
 {
+    BITCOIN_ASSERT(!stack_.empty());
     stack_.back() = !stack_.back();
 }
 
 void conditional_stack::close()
 {
+    BITCOIN_ASSERT(!stack_.empty());
     stack_.pop_back();
 }
 

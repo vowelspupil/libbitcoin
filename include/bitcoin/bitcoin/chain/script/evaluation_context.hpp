@@ -22,7 +22,9 @@
 
 #include <cstdint>
 #include <bitcoin/bitcoin/chain/script/conditional_stack.hpp>
+#include <bitcoin/bitcoin/chain/script/opcode.hpp>
 #include <bitcoin/bitcoin/chain/script/operation.hpp>
+#include <bitcoin/bitcoin/chain/script/script.hpp>
 #include <bitcoin/bitcoin/define.hpp>
 #include <bitcoin/bitcoin/utility/data.hpp>
 
@@ -32,23 +34,32 @@ namespace chain {
 class evaluation_context
 {
 public:
+    typedef operation::stack::const_iterator iterator;
+
     evaluation_context(uint32_t flags);
     evaluation_context(uint32_t flags, const data_stack& stack);
 
-    void reset_op_count();
-    bool update_op_count(const operation& op);
-    bool update_op_count(int32_t multisig_pubkeys);
-
+    bool evaluate(const script& script);
+    void reset(iterator instruction);
+    iterator begin() const;
+    iterator end() const;
+    uint32_t flags() const;
     data_chunk pop_stack();
+    bool stack_to_bool() const;
+    bool is_stack_overflow() const;
+    bool update_op_count(opcode code);
+    bool update_pubkey_count(int32_t multisig_pubkeys);
 
-    operation::stack::const_iterator code_begin;
+    // public stacks
     data_stack stack;
     data_stack alternate;
     conditional_stack condition;
-    uint32_t flags;
 
 private:
-    uint64_t op_count_;
+    iterator begin_;
+    iterator end_;
+    size_t op_count_;
+    const uint32_t flags_;
 };
 
 } // namespace chain

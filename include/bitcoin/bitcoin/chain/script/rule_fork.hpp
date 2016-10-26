@@ -17,37 +17,34 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef LIBBITCOIN_CHAIN_INTERPRETER_HPP
-#define LIBBITCOIN_CHAIN_INTERPRETER_HPP
+#ifndef LIBBITCOIN_CHAIN_RULE_FORK_HPP
+#define LIBBITCOIN_CHAIN_RULE_FORK_HPP
 
 #include <cstdint>
-#include <bitcoin/bitcoin/chain/script/evaluation_context.hpp>
-#include <bitcoin/bitcoin/chain/script/operation.hpp>
-#include <bitcoin/bitcoin/chain/script/script.hpp>
-#include <bitcoin/bitcoin/define.hpp>
-#include <bitcoin/bitcoin/error.hpp>
-#include <bitcoin/bitcoin/math/hash.hpp>
-#include <bitcoin/bitcoin/utility/data.hpp>
 
 namespace libbitcoin {
 namespace chain {
 
-class BC_API transaction;
-
-class BC_API interpreter
+enum rule_fork : uint32_t
 {
-public:
-    static bool run(const transaction& tx, uint32_t input_index,
-        const script& script, evaluation_context& context);
+    no_rules = 0,
 
-private:
-    static bool next_op(const transaction& tx, uint32_t input_index,
-        operation::stack::const_iterator op, const script& script,
-        evaluation_context& context);
+    /// pay-to-script-hash enabled
+    bip16_rule = 1 << 0,
 
-    static bool run_op(operation::stack::const_iterator op,
-        const transaction& tx, uint32_t input_index, const script& script,
-        evaluation_context& context);
+    /// no duplicated unspent transaction ids
+    bip30_rule = 1 << 1,
+
+    /// coinbase must include height
+    bip34_rule = 1 << 2,
+
+    /// strict DER signatures required
+    bip66_rule = 1 << 3,
+
+    /// nop2 becomes check locktime verify
+    bip65_rule = 1 << 4,
+
+    all_rules = 0xffffffff
 };
 
 } // namespace chain

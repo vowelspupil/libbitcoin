@@ -60,7 +60,7 @@ opcode token_to_opcode(const std::string& token)
 {
     std::string lower_token = token;
     boost::algorithm::to_lower(lower_token);
-    return string_to_opcode(lower_token);
+    return opcode_from_string(lower_token);
 }
 
 bool is_opcode(const std::string& token)
@@ -306,15 +306,15 @@ BOOST_AUTO_TEST_CASE(script__from_data__to_data_weird__roundtrips)
 BOOST_AUTO_TEST_CASE(script__is_raw_data_operations_size_not_equal_one_returns_false)
 {
     script instance;
-    BOOST_REQUIRE_EQUAL(false, instance.is_raw_data());
+    BOOST_REQUIRE(!instance.is_raw_data());
 }
 
 BOOST_AUTO_TEST_CASE(script__is_raw_data_code_not_equal_raw_data_returns_false)
 {
     script instance;
     instance.operations().emplace_back();
-    instance.operations().back().set_code(opcode::vernotif);
-    BOOST_REQUIRE_EQUAL(false, instance.is_raw_data());
+    instance.operations().back().set_code(opcode::verify);
+    BOOST_REQUIRE(!instance.is_raw_data());
 }
 
 BOOST_AUTO_TEST_CASE(script__is_raw_data_returns_true)
@@ -324,7 +324,7 @@ BOOST_AUTO_TEST_CASE(script__is_raw_data_returns_true)
     auto instance = script::factory_from_data(data, false,
         script::parse_mode::raw_data);
 
-    BOOST_REQUIRE_EQUAL(true, instance.is_raw_data());
+    BOOST_REQUIRE(instance.is_raw_data());
 }
 
 BOOST_AUTO_TEST_CASE(script__factory_from_data_chunk_test)
@@ -359,9 +359,9 @@ BOOST_AUTO_TEST_CASE(script__from_data__roundtrip_first_byte_code_collision_with
         "8292e8a8ade38191e381a6e381afe38184e381aae38184"));
 
     script instance;
-    BOOST_REQUIRE_EQUAL(true, instance.from_data(raw, false, script::parse_mode::strict));
+    BOOST_REQUIRE(instance.from_data(raw, false, script::parse_mode::strict));
     const auto reserialized = instance.to_data(false);
-    BOOST_REQUIRE_EQUAL(true, raw == reserialized);
+    BOOST_REQUIRE(raw == reserialized);
 }
 
 BOOST_AUTO_TEST_CASE(script__from_data__roundtrip_code_collision_with_raw_data__success)
@@ -372,9 +372,9 @@ BOOST_AUTO_TEST_CASE(script__from_data__roundtrip_code_collision_with_raw_data__
         "8292e8a8ade38191e381a6e381afe38184e381aae38184"));
 
     script instance;
-    BOOST_REQUIRE_EQUAL(true, instance.from_data(raw, false, script::parse_mode::strict));
+    BOOST_REQUIRE(instance.from_data(raw, false, script::parse_mode::strict));
     const auto reserialized = instance.to_data(false);
-    BOOST_REQUIRE_EQUAL(true, raw == reserialized);
+    BOOST_REQUIRE(raw == reserialized);
 }
 
 // Valid pay-to-script-hash scripts are valid regardless of context,
@@ -407,7 +407,7 @@ BOOST_AUTO_TEST_CASE(script__bip16__invalidated)
     }
 }
 
-// Prior to bip65 activation op_nop2 always returns true, but after it becomes a locktime comparer.
+// Prior to bip65 activation nop2 always returns true, but after it becomes a locktime comparer.
 BOOST_AUTO_TEST_CASE(script__bip65__valid)
 {
     for (const auto& test: valid_bip65_scripts)

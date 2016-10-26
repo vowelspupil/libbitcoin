@@ -26,6 +26,8 @@
 #include <bitcoin/bitcoin/define.hpp>
 #include <bitcoin/bitcoin/error.hpp>
 #include <bitcoin/bitcoin/chain/script/operation.hpp>
+#include <bitcoin/bitcoin/chain/script/rule_fork.hpp>
+#include <bitcoin/bitcoin/chain/script/script_pattern.hpp>
 #include <bitcoin/bitcoin/math/elliptic_curve.hpp>
 #include <bitcoin/bitcoin/utility/data.hpp>
 #include <bitcoin/bitcoin/utility/reader.hpp>
@@ -65,9 +67,6 @@ public:
 
     bool operator==(const script& other) const;
     bool operator!=(const script& other) const;
-
-    // Deserialization.
-    //-------------------------------------------------------------------------
 
     static script factory_from_data(const data_chunk& data, bool prefix,
         parse_mode mode);

@@ -34,7 +34,7 @@ BOOST_AUTO_TEST_SUITE(input_tests)
 BOOST_AUTO_TEST_CASE(input__constructor_1__always__returns_default_initialized)
 {
     chain::input instance;
-    BOOST_REQUIRE_EQUAL(false, instance.is_valid());
+    BOOST_REQUIRE(!instance.is_valid());
 }
 
 BOOST_AUTO_TEST_CASE(input__constructor_2__valid_input__returns_input_initialized)
@@ -46,7 +46,7 @@ BOOST_AUTO_TEST_CASE(input__constructor_2__valid_input__returns_input_initialize
     uint32_t sequence = 4568656u;
 
     chain::input instance(previous_output, script, sequence);
-    BOOST_REQUIRE_EQUAL(true, instance.is_valid());
+    BOOST_REQUIRE(instance.is_valid());
     BOOST_REQUIRE(previous_output == instance.previous_output());
     BOOST_REQUIRE(script == instance.script());
     BOOST_REQUIRE_EQUAL(sequence, instance.sequence());
@@ -64,7 +64,7 @@ BOOST_AUTO_TEST_CASE(input__constructor_3__valid_input__returns_input_initialize
     auto dup_script = script;
     chain::input instance(std::move(dup_previous_output), std::move(dup_script), sequence);
 
-    BOOST_REQUIRE_EQUAL(true, instance.is_valid());
+    BOOST_REQUIRE(instance.is_valid());
     BOOST_REQUIRE(previous_output == instance.previous_output());
     BOOST_REQUIRE(script == instance.script());
     BOOST_REQUIRE_EQUAL(sequence, instance.sequence());
@@ -76,7 +76,7 @@ BOOST_AUTO_TEST_CASE(input__constructor_4__valid_input__returns_input_initialize
     BOOST_REQUIRE(expected.from_data(valid_raw_input));
 
     chain::input instance(expected);
-    BOOST_REQUIRE_EQUAL(true, instance.is_valid());
+    BOOST_REQUIRE(instance.is_valid());
     BOOST_REQUIRE(expected == instance);
 }
 
@@ -86,7 +86,7 @@ BOOST_AUTO_TEST_CASE(input__constructor_5__valid_input__returns_input_initialize
     BOOST_REQUIRE(expected.from_data(valid_raw_input));
 
     chain::input instance(std::move(expected));
-    BOOST_REQUIRE_EQUAL(true, instance.is_valid());
+    BOOST_REQUIRE(instance.is_valid());
 }
 
 BOOST_AUTO_TEST_CASE(input__from_data__insufficient_data__failure)
@@ -95,8 +95,8 @@ BOOST_AUTO_TEST_CASE(input__from_data__insufficient_data__failure)
 
     chain::input instance;
 
-    BOOST_REQUIRE_EQUAL(false, instance.from_data(data));
-    BOOST_REQUIRE_EQUAL(false, instance.is_valid());
+    BOOST_REQUIRE(!instance.from_data(data));
+    BOOST_REQUIRE(!instance.is_valid());
 }
 
 BOOST_AUTO_TEST_CASE(input__from_data__valid_data__success)
@@ -236,7 +236,7 @@ BOOST_AUTO_TEST_CASE(input__sequence__roundtrip__success)
 {
     uint32_t value = 1254u;
     chain::input instance;
-    BOOST_REQUIRE_EQUAL(false, value == instance.sequence());
+    BOOST_REQUIRE(value != instance.sequence());
     instance.set_sequence(value);
     BOOST_REQUIRE_EQUAL(value, instance.sequence());
 }

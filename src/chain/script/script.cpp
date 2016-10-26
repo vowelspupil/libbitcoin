@@ -28,6 +28,8 @@
 #include <bitcoin/bitcoin/chain/script/interpreter.hpp>
 #include <bitcoin/bitcoin/chain/script/opcode.hpp>
 #include <bitcoin/bitcoin/chain/script/operation.hpp>
+#include <bitcoin/bitcoin/chain/script/rule_fork.hpp>
+#include <bitcoin/bitcoin/chain/script/script_pattern.hpp>
 #include <bitcoin/bitcoin/chain/script/sighash_algorithm.hpp>
 #include <bitcoin/bitcoin/chain/transaction.hpp>
 #include <bitcoin/bitcoin/error.hpp>
@@ -192,7 +194,7 @@ bool script::emplace(data_chunk&& raw_script)
 {
     // The raw_data opcode is ignored thanks to the is_raw_ flag.
     is_raw_ = true;
-    operations_.push_back({ opcode::raw_data, std::move(raw_script) });
+    operations_.emplace_back(opcode::raw_data, std::move(raw_script));
     return true;
 }
 
@@ -206,6 +208,7 @@ bool script::parse(const data_chunk& raw_script)
     {
         operations_.emplace_back();
 
+        // Invoke the operation deserializer.
         if (!operations_.back().from_data(source))
         {
             operations_.clear();
@@ -264,12 +267,12 @@ bool script::from_string(const std::string& mnemonic)
                 break;
             }
 
-            code = data_to_opcode(raw_data);
+            code = operation::opcode_from_data_size(raw_data.size());
             data = raw_data;
         }
         else
         {
-            code = string_to_opcode(*token);
+            code = opcode_from_string(*token);
         }
 
         if (code == opcode::bad_operation)
@@ -317,6 +320,7 @@ void script::to_data(writer& sink, bool prefix) const
         return;
     }
 
+    // Invoke the operation serializer.
     for (const auto& op: operations_)
         op.to_data(sink);
 }
@@ -635,8 +639,9 @@ size_t script::sigops(bool serialized_script) const
             op.code() == opcode::checkmultisig ||
             op.code() == opcode::checkmultisigverify)
         {
-            total += serialized_script && within_op_n(last_opcode) ?
-                decode_op_n(last_opcode) : multisig_default_signature_ops;
+            total += serialized_script && operation::is_op_n(last_opcode) ?
+                operation::decode_op_n(last_opcode) : 
+                multisig_default_signature_ops;
         }
 
         last_opcode = op.code();
@@ -696,17 +701,17 @@ code script::verify(const transaction& tx, uint32_t input_index,
     evaluation_context in_context(flags);
 
     // Evaluate the input script.
-    if (!interpreter::run(tx, input_index, input_script, in_context, flags))
+    if (!interpreter::run(tx, input_index, input_script, in_context))
         return error::validate_inputs_failed;
 
     evaluation_context out_context(flags, in_context.stack);
 
     // Evaluate the output script.
-    if (!interpreter::run(tx, input_index, prevout_script, out_context, flags))
+    if (!interpreter::run(tx, input_index, prevout_script, out_context))
         return error::validate_inputs_failed;
 
     // Return if stack is false.
-    if (!stack_result(out_context))
+    if (!out_context.stack_to_bool())
         return error::validate_inputs_failed;
 
     // BIP16: Additional validation for pay-to-script-hash transactions.
@@ -731,11 +736,11 @@ code script::verify(const transaction& tx, uint32_t input_index,
         evaluation_context eval_context(flags, in_context.stack);
 
         // Evaluate the eval (serialized) script.
-        if (!interpreter::run(tx, input_index, eval, eval_context, flags))
+        if (!interpreter::run(tx, input_index, eval, eval_context))
             return error::validate_inputs_failed;
 
         // Return the stack state.
-        if (!stack_result(eval_context))
+        if (!eval_context.stack_to_bool())
             return error::validate_inputs_failed;
     }
 

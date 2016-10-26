@@ -30,13 +30,13 @@ BOOST_AUTO_TEST_SUITE(point_iterator_tests)
 BOOST_AUTO_TEST_CASE(point_iterator__operator_bool__not_at_end__returns_true)
 {
     chain::point_iterator instance(chain::point{});
-    BOOST_REQUIRE_EQUAL(true, (bool)instance);
+    BOOST_REQUIRE((bool)instance);
 }
 
 BOOST_AUTO_TEST_CASE(point_iterator__operator_bool_at_end__returns_false)
 {
     chain::point_iterator instance(chain::point{}, true);
-    BOOST_REQUIRE_EQUAL(false, (bool)instance);
+    BOOST_REQUIRE(!(bool)instance);
 }
 
 BOOST_AUTO_TEST_CASE(point_iterator__operator_asterisk__initialized_point__matches_source)
@@ -47,12 +47,12 @@ BOOST_AUTO_TEST_CASE(point_iterator__operator_asterisk__initialized_point__match
 
     for (size_t i = 0; i < valid_raw_point_iterator_source.size(); i++)
     {
-        BOOST_REQUIRE_EQUAL(true, (bool)instance);
+        BOOST_REQUIRE((bool)instance);
         BOOST_REQUIRE_EQUAL(valid_raw_point_iterator_source[i], (*instance));
         instance++;
     }
 
-    BOOST_REQUIRE_EQUAL(false, (bool)instance);
+    BOOST_REQUIRE(!instance);
     BOOST_REQUIRE_EQUAL(0u, (*instance));
 }
 
@@ -65,12 +65,12 @@ BOOST_AUTO_TEST_CASE(point_iterator__operator_arrow__initialized_point__matches_
     BOOST_REQUIRE(valid_raw_point_iterator_source.size() > 0);
     for (size_t i = 0; i < valid_raw_point_iterator_source.size(); i++)
     {
-        BOOST_REQUIRE_EQUAL(true, (bool)instance);
+        BOOST_REQUIRE((bool)instance);
         BOOST_REQUIRE_EQUAL(valid_raw_point_iterator_source[i], instance.operator->());
         instance++;
     }
 
-    BOOST_REQUIRE_EQUAL(false, instance);
+    BOOST_REQUIRE(!instance);
     BOOST_REQUIRE_EQUAL(0u, instance.operator->());
 }
 
