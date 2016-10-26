@@ -103,12 +103,8 @@ public:
     //-------------------------------------------------------------------------
 
     static uint8_t decode_op_n(opcode code);
-
-    static opcode opcode_from_byte(uint8_t byte);
-    static opcode opcode_from_data_size(size_t size);
-
-    static uint8_t opcode_to_byte(opcode code);
     static uint8_t opcode_to_byte(const operation& op);
+    static opcode opcode_from_data_size(size_t size);
 
     /// Types of opcodes.
     static bool is_op_n(opcode code);

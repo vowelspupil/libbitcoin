@@ -139,22 +139,7 @@ bool operation::from_data(std::istream& stream)
     return from_data(source);
 }
 
-bool operation::from_data(reader& source)
-{
-    reset();
 
-    const auto byte = source.read_byte();
-    const auto size = read_data_size(byte, source);
-    code_ = opcode_from_byte(byte);
-
-    if (size > 0)
-        data_ = source.read_bytes(size);
-
-    if (!source)
-        reset();
-
-    return source;
-}
 
 // protected
 void operation::reset()
@@ -180,30 +165,6 @@ void operation::to_data(std::ostream& stream) const
 {
     ostream_writer sink(stream);
     to_data(sink);
-}
-
-void operation::to_data(writer& sink) const
-{
-    const auto size = data_.size();
-    sink.write_byte(opcode_to_byte(*this));
-
-    switch (code_)
-    {
-        case opcode::pushdata1:
-            sink.write_byte(safe_unsigned<uint8_t>(size));
-            break;
-        case opcode::pushdata2:
-            sink.write_2_bytes_little_endian(safe_unsigned<uint16_t>(size));
-            break;
-        case opcode::pushdata4:
-            sink.write_4_bytes_little_endian(safe_unsigned<uint32_t>(size));
-            break;
-        default:
-            sink.write_byte(operation::opcode_to_byte(code_));
-            break;
-    }
-
-    sink.write_bytes(data_);
 }
 
 std::string operation::to_string(uint32_t flags) const
@@ -278,15 +239,60 @@ void operation::set_data(const data_chunk& data)
 //-------------------------------------------------------------------------
 // static
 
+bool operation::from_data(reader& source)
+{
+    reset();
+
+    const auto byte = source.read_byte();
+    const auto size = read_data_size(byte, source);
+    code_ = opcode_from_data_size(size);
+
+    if (size > 0)
+        data_ = source.read_bytes(size);
+
+    if (!source)
+        reset();
+
+    return source;
+}
+
+void operation::to_data(writer& sink) const
+{
+    const auto size = data_.size();
+    const auto byte = opcode_to_byte(*this);
+    sink.write_byte(byte);
+
+    switch (code_)
+    {
+        case opcode::zero:
+        case opcode::special:
+            // For 0 through 75 the wire opcode is also the data length.
+            break;
+        case opcode::pushdata1:
+            sink.write_byte(safe_unsigned<uint8_t>(size));
+            break;
+        case opcode::pushdata2:
+            sink.write_2_bytes_little_endian(safe_unsigned<uint16_t>(size));
+            break;
+        case opcode::pushdata4:
+            sink.write_4_bytes_little_endian(safe_unsigned<uint32_t>(size));
+            break;
+        default:
+            break;
+    }
+
+    sink.write_bytes(data_);
+}
+
 // private
 size_t operation::read_data_size(uint8_t byte, reader& source)
 {
-    const auto code = opcode_from_byte(byte);
+    // For 0 through 75 the wire opcode is also the data length.
+    if (byte < static_cast<uint8_t>(opcode::pushdata1))
+        return byte;
 
-    switch (code)
+    switch (static_cast<opcode>(byte))
     {
-        case opcode::special:
-            return byte;
         case opcode::pushdata1:
             return source.read_byte();
         case opcode::pushdata2:
@@ -294,14 +300,15 @@ size_t operation::read_data_size(uint8_t byte, reader& source)
         case opcode::pushdata4:
             return source.read_4_bytes_little_endian();
         default:
+            // This is not a push data code.
             return 0;
     }
 }
 
 opcode operation::opcode_from_data_size(size_t size)
 {
-    // This relies on the continuity of op code values from zero to pushdata.
-    if (size < operation::opcode_to_byte(opcode::pushdata1))
+    // For 0 through 75 the wire opcode is also the data length.
+    if (size < static_cast<uint8_t>(opcode::pushdata1))
         return static_cast<opcode>(size);
 
     if (size < max_uint8)
@@ -316,27 +323,14 @@ opcode operation::opcode_from_data_size(size_t size)
     return opcode::bad_operation;
 }
 
-// If byte is in special range the map byte to opcode::special.
-opcode operation::opcode_from_byte(uint8_t byte)
-{
-    // This relies on the continuity of op code values from zero to pushdata.
-    const auto zero = static_cast<uint8_t>(opcode::zero);
-    const auto pushdata1 = static_cast<uint8_t>(opcode::pushdata1);
-    return (zero < byte && byte < pushdata1) ? opcode::special :
-        static_cast<opcode>(byte);
-}
-
-uint8_t operation::opcode_to_byte(opcode code)
-{
-    return static_cast<uint8_t>(code);
-}
-
 // If opcode::special then map byte code from the data size.
 uint8_t operation::opcode_to_byte(const operation& op)
 {
-    return (op.code_ == opcode::special) ?
-        safe_unsigned<uint8_t>(op.data_.size()) :
-        static_cast<uint8_t>(op.code_);
+    // For 0 through 75 the wire opcode is also the data length.
+    if (op.code_ == opcode::special)
+        return safe_unsigned<uint8_t>(op.data_.size());
+
+    return static_cast<uint8_t>(op.code_);
 }
 
 // Determine if code is in the op_n range.
@@ -448,10 +442,10 @@ bool operation::is_disabled(opcode code)
 
 bool operation::is_executable(opcode code)
 {
-    const auto value = opcode_to_byte(code);
+    const auto value = static_cast<uint8_t>(code);
 
-    if (value < opcode_to_byte(opcode::nop) || 
-        value > opcode_to_byte(opcode::nop10))
+    if (value < static_cast<uint8_t>(opcode::nop) ||
+        value > static_cast<uint8_t>(opcode::nop10))
         return false;
 
     return !is_disabled(code);
@@ -476,7 +470,7 @@ bool operation::is_push_only(const operation::stack& ops)
 uint8_t operation::decode_op_n(opcode code)
 {
     static const auto op_0 = static_cast<uint8_t>(opcode::op_1) - 1;
-    BITCOIN_ASSERT(within_op_n(code));
+    BITCOIN_ASSERT(is_op_n(code));
     const auto value = static_cast<uint8_t>(code);
     return value - op_0;
 }

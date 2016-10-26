@@ -158,8 +158,8 @@ static bool op_negative_1(evaluation_context& context)
 
 static bool op_n(evaluation_context& context, opcode code)
 {
-    static const auto code_0 = operation::opcode_to_byte(opcode::op_1) - 1;
-    const auto span = operation::opcode_to_byte(code) - code_0;
+    static const auto code_0 = static_cast<uint8_t>(opcode::op_1) - 1;
+    const auto span = static_cast<uint8_t>(code)-code_0;
     context.stack.push_back(script_number(span).data());
     return true;
 }
@@ -970,25 +970,25 @@ bool interpreter::run_op(operation::stack::const_iterator op, const transaction&
             return true;
 
         case opcode::special:
-            ////BITCOIN_ASSERT(op->data().size() == operation::opcode_to_byte(op.code()));
+            ////BITCOIN_ASSERT(op->data().size() == static_cast<uint8_t>(op.code()));
             context.stack.push_back(op->data());
             return true;
 
         case opcode::pushdata1:
             ////BITCOIN_ASSERT(op->data().size() < max_uint8);
-            ////BITCOIN_ASSERT(op->data().size() > operation::opcode_to_byte(opcode::prefix75));
+            ////BITCOIN_ASSERT(op->data().size() > static_cast<uint8_t>(opcode::prefix75));
             context.stack.push_back(op->data());
             return true;
 
         case opcode::pushdata2:
             ////BITCOIN_ASSERT(op->data().size() < max_uint16);
-            ////BITCOIN_ASSERT(op->data().size() > operation::opcode_to_byte(opcode::prefix75));
+            ////BITCOIN_ASSERT(op->data().size() > static_cast<uint8_t>(opcode::prefix75));
             context.stack.push_back(op->data());
             return true;
 
         case opcode::pushdata4:
             ////BITCOIN_ASSERT(op->data().size() < max_uint32);
-            ////BITCOIN_ASSERT(op->data().size() > operation::opcode_to_byte(opcode::prefix75));
+            ////BITCOIN_ASSERT(op->data().size() > static_cast<uint8_t>(opcode::prefix75));
             context.stack.push_back(op->data());
             return true;
 

@@ -125,10 +125,10 @@ void push_data(data_chunk& raw_script, const data_chunk& data)
         code = opcode::pushdata4;
     }
 
-    script tmp_script;
-    tmp_script.operations().push_back(operation{ code, data });
-    data_chunk raw_tmp_script = tmp_script.to_data(false);
-    extend_data(raw_script, raw_tmp_script);
+    script script;
+    script.operations().emplace_back(code, data);
+    const auto more = script.to_data(false);
+    extend_data(raw_script, more);
 }
 
 static const auto sentinel = "__ENDING__";
