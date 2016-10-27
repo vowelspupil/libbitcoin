@@ -159,8 +159,8 @@ enum class opcode : uint8_t
     // These are sentinels (values are arbitry).
 
     bad_operation,
-    special,
-    raw_data
+    raw_data,
+    special
 };
 
 /// Convert the opcode to a mnemonic string.

@@ -61,29 +61,27 @@ static const auto one_hash = hash_literal(
 
 // A default instance is invalid (until modified).
 script::script()
-  : operations_(), is_raw_(false), valid_(false)
+  : operations_(), valid_(false)
 {
 }
 
 script::script(script&& other)
-  : operations_(std::move(other.operations_)), is_raw_(other.is_raw_),
-    valid_(other.valid_)
+  : operations_(std::move(other.operations_)), valid_(other.valid_)
 {
 }
 
 script::script(const script& other)
-  : operations_(other.operations_), is_raw_(other.is_raw_),
-    valid_(other.valid_)
+  : operations_(other.operations_), valid_(other.valid_)
 {
 }
 
 script::script(operation::stack&& operations)
-  : operations_(std::move(operations)), is_raw_(false), valid_(true)
+  : operations_(std::move(operations)), valid_(true)
 {
 }
 
 script::script(const operation::stack& operations)
-  : operations_(operations), is_raw_(false), valid_(true)
+  : operations_(operations), valid_(true)
 {
 }
 
@@ -93,7 +91,6 @@ script::script(const operation::stack& operations)
 script& script::operator=(script&& other)
 {
     operations_ = std::move(other.operations_);
-    is_raw_ = other.is_raw_;
     valid_ = other.valid_;
     return *this;
 }
@@ -101,7 +98,6 @@ script& script::operator=(script&& other)
 script& script::operator=(const script& other)
 {
     operations_ = other.operations_;
-    is_raw_ = other.is_raw_;
     valid_ = other.valid_;
     return *this;
 }
@@ -190,18 +186,18 @@ bool script::from_data(reader& source, bool prefix, parse_mode mode)
 }
 
 // private
-bool script::emplace(data_chunk&& raw_script)
+bool script::emplace(data_chunk&& bytes)
 {
-    // The raw_data opcode is ignored thanks to the is_raw_ flag.
-    is_raw_ = true;
-    operations_.emplace_back(opcode::raw_data, std::move(raw_script));
+    // Operations does not parse invalid individual ops. If any operation fails
+    // to parse we fall back and set the entire raw data script here as one op.
+    operations_.emplace_back(opcode::raw_data, std::move(bytes));
     return true;
 }
 
 // private
-bool script::parse(const data_chunk& raw_script)
+bool script::parse(const data_chunk& bytes)
 {
-    data_source istream(raw_script);
+    data_source istream(bytes);
     istream_reader source(istream);
 
     while (!source.is_exhausted())
@@ -224,19 +220,19 @@ void script::reset()
 {
     operations_.clear();
     operations_.shrink_to_fit();
-    is_raw_ = false;
     valid_ = false;
 }
 
 bool script::is_valid() const
 {
-    return valid_ || !operations_.empty() || is_raw_;
+    return valid_ || !operations_.empty();
 }
 
 // protected
 bool script::is_raw_data() const
 {
-    return (operations_.size() == 1) && is_raw_;
+    return (operations_.size() == 1) && 
+        operations_.front().code() == opcode::raw_data;
 }
 
 bool script::from_string(const std::string& mnemonic)
@@ -253,22 +249,22 @@ bool script::from_string(const std::string& mnemonic)
 
         if (*token == "[")
         {
-            data_chunk raw_data;
+            data_chunk bytes;
 
-            if (!decode_base16(raw_data, *++token))
+            if (!decode_base16(bytes, *++token))
             {
                 valid_ = false;
                 break;
             }
 
-            if (raw_data.empty() || *++token != "]")
+            if (bytes.empty() || *++token != "]")
             {
                 valid_ = false;
                 break;
             }
 
-            code = operation::opcode_from_data_size(raw_data.size());
-            data = raw_data;
+            code = operation::opcode_from_size(bytes.size());
+            data = bytes;
         }
         else
         {
@@ -281,7 +277,7 @@ bool script::from_string(const std::string& mnemonic)
             break;
         }
 
-        operations_.push_back({ code, data });
+        operations_.emplace_back(code, data);
     }
 
     if (!valid_)
@@ -314,12 +310,6 @@ void script::to_data(writer& sink, bool prefix) const
     if (prefix)
         sink.write_variable_little_endian(satoshi_content_size());
 
-    if (is_raw_data())
-    {
-        sink.write_bytes(operations_.front().data());
-        return;
-    }
-
     // Invoke the operation serializer.
     for (const auto& op: operations_)
         op.to_data(sink);
@@ -346,9 +336,6 @@ std::string script::to_string(uint32_t flags) const
 // TODO: cache.
 uint64_t script::satoshi_content_size() const
 {
-    if (is_raw_data())
-        return operations_.front().data().size();
-
     const auto value = [](uint64_t total, const operation& op)
     {
         return safe_add(total, op.serialized_size());
@@ -630,14 +617,15 @@ size_t script::sigops(bool serialized_script) const
 
     for (const auto& op: operations_)
     {
-        if (op.code() == opcode::checksig ||
-            op.code() == opcode::checksigverify)
+        const auto code = op.code();
+
+        if (code == opcode::checksig ||
+            code == opcode::checksigverify)
         {
             total++;
         }
-        else if (
-            op.code() == opcode::checkmultisig ||
-            op.code() == opcode::checkmultisigverify)
+        else if (code == opcode::checkmultisig || 
+            code == opcode::checkmultisigverify)
         {
             total += serialized_script && operation::is_positive(last_opcode) ?
                 operation::opcode_to_positive(last_opcode) :

@@ -104,9 +104,10 @@ public:
 
     static uint8_t opcode_to_positive(opcode code);
     static uint8_t opcode_to_byte(const operation& op);
-    static opcode opcode_from_data_size(size_t size);
+    static opcode opcode_from_size(size_t size);
 
     /// Types of opcodes.
+    static bool is_wire(opcode code);
     static bool is_push(opcode code);
     static bool is_positive(opcode code);
     static bool is_disabled(opcode code);
@@ -144,7 +145,7 @@ protected:
     void reset();
 
 private:
-    static size_t read_data_size(uint8_t byte, reader& source);
+    static uint32_t read_data_size(uint8_t byte, reader& source);
 
     opcode code_;
     data_chunk data_;

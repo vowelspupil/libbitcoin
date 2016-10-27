@@ -139,7 +139,32 @@ bool operation::from_data(std::istream& stream)
     return from_data(source);
 }
 
+// This rejects invalid operations (always strict).
+bool operation::from_data(reader& source)
+{
+    reset();
 
+    const auto byte = source.read_byte();
+    const auto size = read_data_size(byte, source);
+    static_assert(sizeof(size) == sizeof(uint32_t), "unexpected size");
+    code_ = static_cast<opcode>(byte);
+
+    // The value must be a valid opcode on the wire.
+    if (!operation::is_wire(code_))
+        source.invalidate();
+
+    if (size != 0)
+    {
+        // This cannot fail because size is uint32_t.
+        code_ = opcode_from_size(size);
+        data_ = source.read_bytes(size);
+    }
+
+    if (!source)
+        reset();
+
+    return source;
+}
 
 // protected
 void operation::reset()
@@ -167,6 +192,42 @@ void operation::to_data(std::ostream& stream) const
     to_data(sink);
 }
 
+void operation::to_data(writer& sink) const
+{
+    const auto size = data_.size();
+    const auto code = opcode_to_byte(*this);
+
+    switch (code_)
+    {
+        case opcode::special:
+            // For 0 through 75 the wire opcode is also the data size.
+            sink.write_byte(code);
+            sink.write_bytes(data_);
+            break;
+        case opcode::pushdata1:
+            sink.write_byte(code);
+            sink.write_byte(safe_unsigned<uint8_t>(size));
+            sink.write_bytes(data_);
+            break;
+        case opcode::pushdata2:
+            sink.write_byte(code);
+            sink.write_2_bytes_little_endian(safe_unsigned<uint16_t>(size));
+            sink.write_bytes(data_);
+            break;
+        case opcode::pushdata4:
+            sink.write_byte(code);
+            sink.write_4_bytes_little_endian(safe_unsigned<uint32_t>(size));
+            sink.write_bytes(data_);
+            break;
+        case opcode::raw_data:
+            sink.write_bytes(data_);
+            break;
+        default:
+            sink.write_byte(code);
+            break;
+    }
+}
+
 std::string operation::to_string(uint32_t flags) const
 {
     std::ostringstream ss;
@@ -184,24 +245,21 @@ std::string operation::to_string(uint32_t flags) const
 
 uint64_t operation::serialized_size() const
 {
-    uint64_t size = sizeof(uint8_t) + data_.size();
-
     switch (code_)
     {
+        case opcode::special:
+            return sizeof(uint8_t) + data_.size();
         case opcode::pushdata1:
-            size += sizeof(uint8_t);
-            break;
+            return sizeof(uint8_t) + sizeof(uint8_t) + data_.size();
         case opcode::pushdata2:
-            size += sizeof(uint16_t);
-            break;
+            return sizeof(uint8_t) + sizeof(uint16_t) + data_.size();
         case opcode::pushdata4:
-            size += sizeof(uint32_t);
-            break;
+            return sizeof(uint8_t) + sizeof(uint32_t) + data_.size();
+        case opcode::raw_data:
+            return data_.size();
         default:
-            break;
+            return sizeof(uint8_t);
     }
-
-    return size;
 }
 
 opcode operation::code() const
@@ -239,58 +297,10 @@ void operation::set_data(const data_chunk& data)
 //-------------------------------------------------------------------------
 // static
 
-bool operation::from_data(reader& source)
-{
-    reset();
-
-    const auto byte = source.read_byte();
-    const auto size = read_data_size(byte, source);
-
-    // This is hacky because opcode cannot include its size.
-    code_ = (size == 0) ? static_cast<opcode>(byte) :
-        opcode_from_data_size(size);
-
-    if (size > 0)
-        data_ = source.read_bytes(size);
-
-    if (!source)
-        reset();
-
-    return source;
-}
-
-void operation::to_data(writer& sink) const
-{
-    const auto size = data_.size();
-    const auto byte = opcode_to_byte(*this);
-    sink.write_byte(byte);
-
-    switch (code_)
-    {
-        case opcode::zero:
-        case opcode::special:
-            // For 0 through 75 the wire opcode is also the data length.
-            break;
-        case opcode::pushdata1:
-            sink.write_byte(safe_unsigned<uint8_t>(size));
-            break;
-        case opcode::pushdata2:
-            sink.write_2_bytes_little_endian(safe_unsigned<uint16_t>(size));
-            break;
-        case opcode::pushdata4:
-            sink.write_4_bytes_little_endian(safe_unsigned<uint32_t>(size));
-            break;
-        default:
-            break;
-    }
-
-    sink.write_bytes(data_);
-}
-
 // private
-size_t operation::read_data_size(uint8_t byte, reader& source)
+uint32_t operation::read_data_size(uint8_t byte, reader& source)
 {
-    // For 0 through 75 the wire opcode is also the data length.
+    // For 0 through 75 the wire opcode is also the data size.
     if (byte < static_cast<uint8_t>(opcode::pushdata1))
         return byte;
 
@@ -308,11 +318,13 @@ size_t operation::read_data_size(uint8_t byte, reader& source)
     }
 }
 
-opcode operation::opcode_from_data_size(size_t size)
+opcode operation::opcode_from_size(size_t size)
 {
-    // For 0 through 75 the wire opcode is also the data length.
-    if (size < static_cast<uint8_t>(opcode::pushdata1))
-        return static_cast<opcode>(size);
+    static constexpr auto pushdata1 = static_cast<uint8_t>(opcode::pushdata1);
+
+    // For 0 through 75 the wire opcode is also the data size.
+    if (size < pushdata1)
+        return opcode::special;
 
     if (size <= max_uint8)
         return opcode::pushdata1;
@@ -326,10 +338,9 @@ opcode operation::opcode_from_data_size(size_t size)
     return opcode::bad_operation;
 }
 
-// If opcode::special then map byte code from the data size.
 uint8_t operation::opcode_to_byte(const operation& op)
 {
-    // For 0 through 75 the wire opcode is also the data length.
+    // For 0 through 75 the wire opcode is also the data size.
     if (op.code_ == opcode::special)
         return safe_unsigned<uint8_t>(op.data_.size());
 
@@ -429,18 +440,26 @@ bool operation::is_disabled(opcode code)
 
 bool operation::is_executable(opcode code)
 {
+    static constexpr auto minimum = static_cast<uint8_t>(opcode::nop);
+    static constexpr auto maximum = static_cast<uint8_t>(opcode::nop10);
+
     const auto value = static_cast<uint8_t>(code);
-
-    if (value < static_cast<uint8_t>(opcode::nop) ||
-        value > static_cast<uint8_t>(opcode::nop10))
-        return false;
-
-    return !is_disabled(code);
+    return value >= minimum && value <= maximum && !is_disabled(code);
 }
 
 bool operation::is_operational(opcode code)
 {
     return is_push(code) || is_executable(code);
+}
+
+// Wire opcodes include specials. These map into opcode::special for execution.
+bool operation::is_wire(opcode code)
+{
+    static constexpr auto minimum = static_cast<uint8_t>(opcode::zero);
+    static constexpr auto maximum = static_cast<uint8_t>(opcode::nop10);
+
+    const auto value = static_cast<uint8_t>(code);
+    return value >= minimum && value <= maximum && !is_disabled(code);
 }
 
 bool operation::is_push_only(const operation::stack& ops)
