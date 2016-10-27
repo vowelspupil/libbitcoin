@@ -172,8 +172,10 @@ bool evaluation_context::stack_result() const
 /// Stack pop.
 //-----------------------------------------------------------------------------
 
+// This call must be guarded.
 data_chunk evaluation_context::pop()
 {
+    BITCOIN_ASSERT(!stack.empty());
     const auto value = stack.back();
     stack.pop_back();
     return value;
