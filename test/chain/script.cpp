@@ -84,7 +84,7 @@ void push_literal(data_chunk& raw_script, int64_t value)
 
 #define PUSH_X(n) \
         case n: \
-            raw_script.push_back(static_cast<uint8_t>(opcode::op_##n)); \
+            raw_script.push_back(static_cast<uint8_t>(opcode::positive_##n)); \
             return;
 
         PUSH_X(1);

@@ -41,7 +41,7 @@ public:
     evaluation_context(uint32_t flags, size_t, data_stack&& value);
     evaluation_context(uint32_t flags, const data_stack& value);
 
-    bool evaluate(const script& script);
+    bool initialize(const script& script);
     void reset(iterator instruction);
     iterator begin() const;
     iterator end() const;

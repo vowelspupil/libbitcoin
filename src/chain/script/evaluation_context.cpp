@@ -61,7 +61,7 @@ evaluation_context::evaluation_context(uint32_t flags, const data_stack& value)
 }
 
 // This does not clear the stacks.
-bool evaluation_context::evaluate(const script& script)
+bool evaluation_context::initialize(const script& script)
 {
     // bit.ly/2c9HzmN
     if (script.satoshi_content_size() > max_script_size)

@@ -306,11 +306,10 @@ static bool op_if(evaluation_context& context)
 
 static bool op_notif(evaluation_context& context)
 {
-    // A bit hackish...
-    // Open IF statement but then invert it to get NOTIF
     if (!op_if(context))
         return false;
 
+    // Open IF and invert for NOTIF.
     context.condition.negate();
     return true;
 }
@@ -843,6 +842,14 @@ static bool op_hash256(evaluation_context& context)
     return true;
 }
 
+static bool op_code_seperator(evaluation_context& context,
+    operation::stack::const_iterator op)
+{
+    // Modify context.begin() for the next op_check_[multi_]sig_verify call.
+    context.reset(op);
+    return true;
+}
+
 static signature_parse_result op_check_sig_verify(evaluation_context& context,
     const script& script, const transaction& tx, uint32_t input_index)
 {
@@ -1039,380 +1046,236 @@ static bool op_check_locktime_verify(evaluation_context& context,
 // Validation - run.
 //-----------------------------------------------------------------------------
 
+// See BIP16 for max_data_script_size.
 // The script paramter is NOT always tx.indexes[input_index].script.
 bool interpreter::run(const transaction& tx, uint32_t input_index,
     const script& script, evaluation_context& context)
 {
-    if (!context.evaluate(script))
+    if (!context.initialize(script))
         return false;
 
     // If any op returns false the execution terminates and is false.
     for (auto op = context.begin(); op != context.end(); ++op)
-        if (!next_op(tx, input_index, op, script, context))
+    {
+        // failure: static
+        if (op->data().size() > max_data_script_size ||
+            !operation::is_operational(op->code()) ||
+            !context.update_op_count(op->code()))
             return false;
+
+        // short circut this operation
+        if (!operation::is_conditional(op->code()) &&
+            !context.condition.succeeded())
+            continue;
+
+        // failure: dynamic
+        if (!run_op(op, tx, input_index, script, context) ||
+            context.is_stack_overflow())
+            return false;
+    }
 
     // Confirm that scopes are paired.
     return context.condition.closed();
-}
-
-bool interpreter::next_op(const transaction& tx, uint32_t input_index,
-    operation::stack::const_iterator op, const script& script,
-    evaluation_context& context)
-{
-    // See BIP16
-    if (op->data().size() > max_data_script_size)
-        return false;
-
-    const auto code = op->code();
-
-    if (!operation::is_operational(code) || !context.update_op_count(code))
-        return false;
-
-    if (!operation::is_conditional(code) && !context.condition.succeeded())
-        return true;
-
-    return run_op(op, tx, input_index, script, context) &&
-        !context.is_stack_overflow();
 }
 
 bool interpreter::run_op(operation::stack::const_iterator op,
     const transaction& tx, uint32_t input_index, const script& script,
     evaluation_context& context)
 {
-    DEBUG_ONLY(const auto size = op->data().size();)
+    BITCOIN_ASSERT(op->data().empty() ||
+        op->code() == opcode::special ||
+        op->code() == opcode::pushdata1 ||
+        op->code() == opcode::pushdata2 ||
+        op->code() == opcode::pushdata4);
 
-    // Push (data) codes.
-    //-------------------------------------------------------------------------
     switch (op->code())
     {
         case opcode::zero:
-            BITCOIN_ASSERT(size == 0);
             return op_zero(context);
-
         case opcode::special:
-            context.stack.push_back(op->data());
-            return true;
-
+            return op_special(context, op->data());
         case opcode::pushdata1:
-            context.stack.push_back(op->data());
-            return true;
-
+            return op_pushdata1(context, op->data());
         case opcode::pushdata2:
-            context.stack.push_back(op->data());
-            return true;
-
+            return op_pushdata2(context, op->data());
         case opcode::pushdata4:
-            context.stack.push_back(op->data());
-            return true;
-
+            return op_pushdata4(context, op->data());
         case opcode::negative_1:
-            BITCOIN_ASSERT(size == 0);
             return op_negative_1(context);
-
         case opcode::positive_1:
-            BITCOIN_ASSERT(size == 0);
             return op_positive_1(context);
-
         case opcode::positive_2:
-            BITCOIN_ASSERT(size == 0);
             return op_positive_2(context);
-
         case opcode::positive_3:
-            BITCOIN_ASSERT(size == 0);
             return op_positive_3(context);
-
         case opcode::positive_4:
-            BITCOIN_ASSERT(size == 0);
             return op_positive_4(context);
-
         case opcode::positive_5:
-            BITCOIN_ASSERT(size == 0);
             return op_positive_5(context);
-
         case opcode::positive_6:
-            BITCOIN_ASSERT(size == 0);
             return op_positive_6(context);
-
         case opcode::positive_7:
-            BITCOIN_ASSERT(size == 0);
             return op_positive_7(context);
-
         case opcode::positive_8:
-            BITCOIN_ASSERT(size == 0);
             return op_positive_8(context);
-
         case opcode::positive_9:
-            BITCOIN_ASSERT(size == 0);
             return op_positive_9(context);
-
         case opcode::positive_10:
-            BITCOIN_ASSERT(size == 0);
             return op_positive_10(context);
-
         case opcode::positive_11:
-            BITCOIN_ASSERT(size == 0);
             return op_positive_11(context);
-
         case opcode::positive_12:
-            BITCOIN_ASSERT(size == 0);
             return op_positive_12(context);
-
         case opcode::positive_13:
-            BITCOIN_ASSERT(size == 0);
             return op_positive_13(context);
-
         case opcode::positive_14:
-            BITCOIN_ASSERT(size == 0);
             return op_positive_14(context);
-
         case opcode::positive_15:
-            BITCOIN_ASSERT(size == 0);
             return op_positive_15(context);
-
         case opcode::positive_16:
-            BITCOIN_ASSERT(size == 0);
             return op_positive_16(context);
-
-        default:
-            BITCOIN_ASSERT(size == 0);
-            break;
-    }
-
-    // Executable codes.
-    //-------------------------------------------------------------------------
-    switch (op->code())
-    {
         case opcode::if_:
             return op_if(context);
-
         case opcode::notif:
             return op_notif(context);
-
         case opcode::else_:
             return op_else(context);
-
         case opcode::endif:
             return op_endif(context);
-
         case opcode::verify:
             return op_verify(context);
-
         case opcode::return_:
             return op_return(context);
-
         case opcode::toaltstack:
             return op_to_alt_stack(context);
-
         case opcode::fromaltstack:
             return op_from_alt_stack(context);
-
         case opcode::drop2:
             return op_drop2(context);
-
         case opcode::dup2:
             return op_dup2(context);
-
         case opcode::dup3:
             return op_dup3(context);
-
         case opcode::over2:
             return op_over2(context);
-
         case opcode::rot2:
             return op_rot2(context);
-
         case opcode::swap2:
             return op_swap2(context);
-
         case opcode::ifdup:
             return op_if_dup(context);
-
         case opcode::depth:
             return op_depth(context);
-
         case opcode::drop:
             return op_drop(context);
-
         case opcode::dup:
             return op_dup(context);
-
         case opcode::nip:
             return op_nip(context);
-
         case opcode::over:
             return op_over(context);
-
         case opcode::pick:
             return op_pick(context);
-
         case opcode::roll:
             return op_roll(context);
-
         case opcode::rot:
             return op_rot(context);
-
         case opcode::swap:
             return op_swap(context);
-
         case opcode::tuck:
             return op_tuck(context);
-
         case opcode::size:
             return op_size(context);
-
         case opcode::equal:
             return op_equal(context);
-
         case opcode::equalverify:
             return op_equal_verify(context);
-
         case opcode::add1:
             return op_add1(context);
-
         case opcode::sub1:
             return op_sub1(context);
-
         case opcode::negate:
             return op_negate(context);
-
         case opcode::abs:
             return op_abs(context);
-
         case opcode::not_:
             return op_not(context);
-
         case opcode::nonzero:
             return op_nonzero(context);
-
         case opcode::add:
             return op_add(context);
-
         case opcode::sub:
             return op_sub(context);
-
         case opcode::booland:
             return op_bool_and(context);
-
         case opcode::boolor:
             return op_bool_or(context);
-
         case opcode::numequal:
             return op_num_equal(context);
-
         case opcode::numequalverify:
             return op_num_equal_verify(context);
-
         case opcode::numnotequal:
             return op_num_not_equal(context);
-
         case opcode::lessthan:
             return op_less_than(context);
-
         case opcode::greaterthan:
             return op_greater_than(context);
-
         case opcode::lessthanorequal:
             return op_less_than_or_equal(context);
-
         case opcode::greaterthanorequal:
             return op_greater_than_or_equal(context);
-
         case opcode::min:
             return op_min(context);
-
         case opcode::max:
             return op_max(context);
-
         case opcode::within:
             return op_within(context);
-
         case opcode::ripemd160:
             return op_ripemd160(context);
-
         case opcode::sha1:
             return op_sha1(context);
-
         case opcode::sha256:
             return op_sha256(context);
-
         case opcode::hash160:
             return op_hash160(context);
-
         case opcode::hash256:
             return op_hash256(context);
-
         case opcode::codeseparator:
-            context.reset(op);
-            return true;
-
+            return op_code_seperator(context, op);
         case opcode::checksig:
             return op_check_sig(context, script, tx, input_index);
-
         case opcode::checksigverify:
-            return op_check_sig_verify(context, script, tx, input_index) ==
-                signature_parse_result::valid;
-
+            return op_check_sig_verify(context, script, tx, input_index) == signature_parse_result::valid;
         case opcode::checkmultisig:
             return op_check_multisig(context, script, tx, input_index);
-
         case opcode::checkmultisigverify:
-            return op_check_multisig_verify(context, script, tx, input_index) ==
-                signature_parse_result::valid;
-
+            return op_check_multisig_verify(context, script, tx, input_index) == signature_parse_result::valid;
         case opcode::checklocktimeverify:
              return op_check_locktime_verify(context, script, tx, input_index);
-
         case opcode::nop:
+            return op_nop(context);
         case opcode::nop1:
+            return op_nop(context);
         ////case opcode::nop2:
+        ////    return op_nop(context);
         case opcode::nop3:
+            return op_nop(context);
         case opcode::nop4:
+            return op_nop(context);
         case opcode::nop5:
+            return op_nop(context);
         case opcode::nop6:
+            return op_nop(context);
         case opcode::nop7:
+            return op_nop(context);
         case opcode::nop8:
+            return op_nop(context);
         case opcode::nop9:
+            return op_nop(context);
         case opcode::nop10:
             return op_nop(context);
-
-        // Non-operational codes (should not be here).
-        //---------------------------------------------------------------------
-        // Our negative test cases pass these values into scripts, for example:
-        // [if 188 else op_1 endif], so assertions are disabled.
-
-        case opcode::disabled_98:
-        case opcode::disabled_101:
-        case opcode::disabled_102:
-        case opcode::disabled_126:
-        case opcode::disabled_127:
-        case opcode::disabled_128:
-        case opcode::disabled_129:
-        case opcode::disabled_131:
-        case opcode::disabled_132:
-        case opcode::disabled_133:
-        case opcode::disabled_134:
-        case opcode::disabled_137:
-        case opcode::disabled_138:
-        case opcode::disabled_141:
-        case opcode::disabled_142:
-        case opcode::disabled_149:
-        case opcode::disabled_150:
-        case opcode::disabled_151:
-        case opcode::disabled_152:
-        case opcode::disabled_153:
-            ////BITCOIN_ASSERT_MSG(false, "Disabled is not operational code.");
-            return false;
-
-        case opcode::bad_operation:
-            ////BITCOIN_ASSERT_MSG(false, "Bad-op is not operational code.");
-            return false;
-
-        case opcode::raw_data:
-            ////BITCOIN_ASSERT_MSG(false, "Raw-data is not operational code.");
-            return false;
-
         default:
-            ////BITCOIN_ASSERT_MSG(false, "Data is not operational code.");
+            BITCOIN_ASSERT_MSG(false, "Cannot run non-operational op code.");
             return false;
     }
 }
