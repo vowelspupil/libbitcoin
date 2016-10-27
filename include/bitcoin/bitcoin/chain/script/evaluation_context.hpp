@@ -24,7 +24,9 @@
 #include <bitcoin/bitcoin/chain/script/conditional_stack.hpp>
 #include <bitcoin/bitcoin/chain/script/opcode.hpp>
 #include <bitcoin/bitcoin/chain/script/operation.hpp>
+#include <bitcoin/bitcoin/constants.hpp>
 #include <bitcoin/bitcoin/define.hpp>
+#include <bitcoin/bitcoin/math/script_number.hpp>
 #include <bitcoin/bitcoin/utility/data.hpp>
 
 namespace libbitcoin {
@@ -35,31 +37,56 @@ class BC_API script;
 class evaluation_context
 {
 public:
-    typedef operation::stack::const_iterator iterator;
+    typedef script_number number;
+    typedef operation::stack::const_iterator op_iterator;
 
+    /// Constructors.
     evaluation_context(uint32_t flags);
-    evaluation_context(uint32_t flags, size_t, data_stack&& value);
+    evaluation_context(uint32_t flags, data_stack&& value);
     evaluation_context(uint32_t flags, const data_stack& value);
 
+    /// Instructions.
     bool initialize(const script& script);
-    void reset(iterator instruction);
-    iterator begin() const;
-    iterator end() const;
-    uint32_t flags() const;
-    data_chunk pop_stack();
-    bool stack_result() const;
-    bool is_stack_overflow() const;
+    void reset(op_iterator instruction);
+
+    /// Operation count.
     bool update_op_count(opcode code);
     bool update_pubkey_count(int32_t multisig_pubkeys);
 
-    // public stacks
+    /// Properties.
+    op_iterator begin() const;
+    op_iterator end() const;
+    uint32_t flags() const;
+
+    /// Stack info.
+    data_chunk& item(size_t back_index);
+    data_stack::iterator position(size_t back_index);
+    bool is_stack_overflow() const;
+    bool stack_result() const;
+
+    /// Stack pop.
+    data_chunk pop();
+    bool pop(data_stack& section, size_t count);
+    bool pop(int32_t& out_value);
+    bool pop(number& out_number, size_t maxiumum_size=max_number_size);
+    bool pop_binary(number& first, number& second);
+    bool pop_ternary(number& first, number& second, number& third);
+    bool pop_position(data_stack::iterator& out_position);
+
+    /// Stack push.
+    void push(bool value);
+    void duplicate(size_t back_index);
+    void swap(size_t back_index_left, size_t back_index_right);
+
+    /// Stacks.
+    /// TODO: make private.
     data_stack stack;
     data_stack alternate;
     conditional_stack condition;
 
 private:
-    iterator begin_;
-    iterator end_;
+    op_iterator begin_;
+    op_iterator end_;
     size_t op_count_;
     const uint32_t flags_;
 };

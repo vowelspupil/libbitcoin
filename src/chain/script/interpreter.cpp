@@ -37,7 +37,7 @@
 
 namespace libbitcoin {
 namespace chain {
-
+    
 enum class signature_parse_result
 {
     valid,
@@ -45,109 +45,16 @@ enum class signature_parse_result
     lax_encoding
 };
 
-// Stack manipulation.
-//-----------------------------------------------------------------------------
-
-inline data_chunk push_bool(bool value)
-{
-    return value ? data_chunk{ 1 } : data_chunk{};
-}
-
-inline data_stack::iterator position(evaluation_context& context,
-    size_t back_index)
-{
-    return context.stack.end() - back_index;
-}
-
-inline data_chunk& item(evaluation_context& context, size_t back_index)
-{
-    return *position(context, back_index);
-}
-
-inline void swap_items(evaluation_context& context, size_t back_index_left,
-    size_t back_index_right)
-{
-    std::swap(item(context, back_index_left), item(context, back_index_right));
-}
-
-inline void duplicate_item(evaluation_context& context, size_t back_index)
-{
-    context.stack.push_back(item(context, back_index));
-}
-
-inline bool pop_unary(evaluation_context& context, script_number& out_number,
-    size_t maxiumum_size=max_number_size)
-{
-    return !context.stack.empty() &&
-        out_number.set_data(context.pop_stack(), maxiumum_size);
-}
-
-inline bool pop_unary(evaluation_context& context, int32_t& out_value)
-{
-    script_number middle;
-    if (!pop_unary(context, middle))
-        return false;
-
-    out_value = middle.int32();
-    return true;
-}
-
-inline bool pop_binary(evaluation_context& context,
-    script_number& left, script_number& right)
-{
-    // The right hand side number is at the top of the stack.
-    return pop_unary(context, right) && pop_unary(context, left);
-}
-
-inline bool pop_ternary(evaluation_context& context,
-    script_number& upper, script_number& lower, script_number& value)
-{
-    // The upper bound is at the top of the stack and the lower bound next.
-    return pop_unary(context, upper) && pop_unary(context, lower) &&
-        pop_unary(context, value);
-}
-
-// Determines if the value is a valid stack index and returns the index.
-inline bool pop_position(evaluation_context& context,
-    data_stack::iterator& out_position)
-{
-    int32_t index;
-    if (!pop_unary(context, index))
-        return false;
-
-    // Ensure the index is within bounds.
-    const auto size = context.stack.size();
-    if (index < 0 || index >= size)
-        return false;
-
-    // index is zero-based and position is one-based.
-    const auto back_index = index + 1;
-
-    out_position = position(context, back_index);
-    return true;
-}
-
-static bool read_section(evaluation_context& context, data_stack& section,
-    size_t count)
-{
-    if (context.stack.size() < count)
-        return false;
-
-    for (size_t i = 0; i < count; ++i)
-        section.push_back(context.pop_stack());
-
-    return true;
-}
-
 // Operations.
 //-----------------------------------------------------------------------------
 
 static bool op_zero(evaluation_context& context)
 {
-    context.stack.push_back({});
+    context.stack.emplace_back();
     return true;
 }
 
+// TODO: look into moving op.data() here.
 static bool op_special(evaluation_context& context, const data_chunk& data)
 {
     BITCOIN_ASSERT(data.size() > static_cast<uint8_t>(opcode::zero));
@@ -156,6 +63,7 @@ static bool op_special(evaluation_context& context, const data_chunk& data)
     return true;
 }
 
+// TODO: look into moving op.data() here.
 static bool op_pushdata1(evaluation_context& context, const data_chunk& data)
 {
     BITCOIN_ASSERT(data.size() >= static_cast<uint8_t>(opcode::pushdata1));
@@ -164,6 +72,7 @@ static bool op_pushdata1(evaluation_context& context, const data_chunk& data)
     return true;
 }
 
+// TODO: look into moving op.data() here.
 static bool op_pushdata2(evaluation_context& context, const data_chunk& data)
 {
     BITCOIN_ASSERT(data.size() > max_uint8);
@@ -172,6 +81,7 @@ static bool op_pushdata2(evaluation_context& context, const data_chunk& data)
     return true;
 }
 
+// TODO: look into moving op.data() here.
 static bool op_pushdata4(evaluation_context& context, const data_chunk& data)
 {
     BITCOIN_ASSERT(data.size() > max_uint16);
@@ -297,7 +207,7 @@ static bool op_if(evaluation_context& context)
             return false;
 
         value = context.stack_result();
-        context.pop_stack();
+        context.pop();
     }
 
     context.condition.open(value);
@@ -340,7 +250,7 @@ static bool op_verify(evaluation_context& context)
     if (!context.stack_result())
         return false;
 
-    context.pop_stack();
+    context.pop();
     return true;
 }
 
@@ -354,7 +264,7 @@ static bool op_to_alt_stack(evaluation_context& context)
     if (context.stack.empty())
         return false;
 
-    context.alternate.push_back(context.pop_stack());
+    context.alternate.push_back(context.pop());
     return true;
 }
 
@@ -383,8 +293,8 @@ static bool op_dup2(evaluation_context& context)
     if (context.stack.size() < 2)
         return false;
 
-    context.stack.push_back(item(context, 2));
-    context.stack.push_back(item(context, 1));
+    context.stack.push_back(context.item(1));
+    context.stack.push_back(context.item(0));
     return true;
 }
 
@@ -393,32 +303,30 @@ static bool op_dup3(evaluation_context& context)
     if (context.stack.size() < 3)
         return false;
 
-    context.stack.push_back(item(context, 3));
-    context.stack.push_back(item(context, 2));
-    context.stack.push_back(item(context, 1));
+    context.stack.push_back(context.item(2));
+    context.stack.push_back(context.item(1));
+    context.stack.push_back(context.item(0));
     return true;
 }
 
-// (x1 x2 x3 x4 -- x1 x2 x3 x4 x1 x2)
 static bool op_over2(evaluation_context& context)
 {
     if (context.stack.size() < 4)
         return false;
 
-    // Item -3 becomes -4 because of first copy.
-    duplicate_item(context, 4);
-    duplicate_item(context, 4);
+    // Size changes after first duplicate.
+    context.duplicate(3);
+    context.duplicate(3);
     return true;
 }
 
-// (x1 x2 x3 x4 x5 x6 -- x3 x4 x5 x6 x1 x2)
 static bool op_rot2(evaluation_context& context)
 {
     if (context.stack.size() < 6)
         return false;
 
-    const auto position_1 = position(context, 6);
-    const auto position_2 = position(context, 5);
+    const auto position_1 = context.position(5);
+    const auto position_2 = context.position(4);
 
     const auto copy_1 = *position_1;
     const auto copy_2 = *position_2;
@@ -434,8 +342,8 @@ static bool op_swap2(evaluation_context& context)
     if (context.stack.size() < 4)
         return false;
 
-    swap_items(context, 4, 2);
-    swap_items(context, 3, 1);
+    context.swap(3, 1);
+    context.swap(2, 0);
     return true;
 }
 
@@ -483,7 +391,7 @@ static bool op_nip(evaluation_context& context)
     if (context.stack.size() < 2)
         return false;
 
-    context.stack.erase(position(context, 2));
+    context.stack.erase(context.position(1));
     return true;
 }
 
@@ -492,14 +400,14 @@ static bool op_over(evaluation_context& context)
     if (context.stack.size() < 2)
         return false;
 
-    duplicate_item(context, 2);
+    context.duplicate(1);
     return true;
 }
 
 static bool op_pick(evaluation_context& context)
 {
     data_stack::iterator position;
-    if (!pop_position(context, position))
+    if (!context.pop_position(position))
         return false;
 
     context.stack.push_back(*position);
@@ -509,7 +417,7 @@ static bool op_pick(evaluation_context& context)
 static bool op_roll(evaluation_context& context)
 {
     data_stack::iterator position;
-    if (!pop_position(context, position))
+    if (!context.pop_position(position))
         return false;
 
     auto copy = *position;
@@ -520,14 +428,11 @@ static bool op_roll(evaluation_context& context)
 
 static bool op_rot(evaluation_context& context)
 {
-    // Top 3 stack items are rotated to the left.
-    // Before: x1 x2 x3
-    // After:  x2 x3 x1
     if (context.stack.size() < 3)
         return false;
 
-    swap_items(context, 3, 2);
-    swap_items(context, 2, 1);
+    context.swap(2, 1);
+    context.swap(1, 0);
     return true;
 }
 
@@ -536,7 +441,7 @@ static bool op_swap(evaluation_context& context)
     if (context.stack.size() < 2)
         return false;
 
-    swap_items(context, 2, 1);
+    context.swap(1, 0);
     return true;
 }
 
@@ -545,7 +450,7 @@ static bool op_tuck(evaluation_context& context)
     if (context.stack.size() < 2)
         return false;
 
-    context.stack.insert(position(context, 2), context.stack.back());
+    context.stack.insert(context.position(1), context.stack.back());
     return true;
 }
 
@@ -567,8 +472,7 @@ static bool op_equal(evaluation_context& context)
     if (context.stack.size() < 2)
         return false;
 
-    const auto value = context.pop_stack() == context.pop_stack();
-    context.stack.push_back(push_bool(value));
+    context.push(context.pop() == context.pop());
     return true;
 }
 
@@ -577,15 +481,18 @@ static bool op_equal_verify(evaluation_context& context)
     if (context.stack.size() < 2)
         return false;
 
-    return context.pop_stack() == context.pop_stack();
+    return context.pop() == context.pop();
 }
 
 static bool op_add1(evaluation_context& context)
 {
     script_number number;
-    if (!pop_unary(context, number))
+    if (!context.pop(number))
         return false;
 
+    //*************************************************************************
+    // CONSENSUS: overflow potential.
+    //*************************************************************************
     number += 1;
     context.stack.push_back(number.data());
     return true;
@@ -594,9 +501,12 @@ static bool op_add1(evaluation_context& context)
 static bool op_sub1(evaluation_context& context)
 {
     script_number number;
-    if (!pop_unary(context, number))
+    if (!context.pop(number))
         return false;
 
+    //*************************************************************************
+    // CONSENSUS: underflow potential.
+    //*************************************************************************
     number -= 1;
     context.stack.push_back(number.data());
     return true;
@@ -605,9 +515,12 @@ static bool op_sub1(evaluation_context& context)
 static bool op_negate(evaluation_context& context)
 {
     script_number number;
-    if (!pop_unary(context, number))
+    if (!context.pop(number))
         return false;
 
+    //*************************************************************************
+    // CONSENSUS: overflow potential.
+    //*************************************************************************
     number = -number;
     context.stack.push_back(number.data());
     return true;
@@ -616,9 +529,12 @@ static bool op_negate(evaluation_context& context)
 static bool op_abs(evaluation_context& context)
 {
     script_number number;
-    if (!pop_unary(context, number))
+    if (!context.pop(number))
         return false;
 
+    //*************************************************************************
+    // CONSENSUS: overflow potential.
+    //*************************************************************************
     if (number < 0)
         number = -number;
 
@@ -629,155 +545,161 @@ static bool op_abs(evaluation_context& context)
 static bool op_not(evaluation_context& context)
 {
     script_number number;
-    if (!pop_unary(context, number))
+    if (!context.pop(number))
         return false;
 
-    context.stack.push_back(push_bool(number == 0));
+    context.push(number == 0);
     return true;
 }
 
 static bool op_nonzero(evaluation_context& context)
 {
     script_number number;
-    if (!pop_unary(context, number))
+    if (!context.pop(number))
         return false;
 
-    context.stack.push_back(push_bool(number != 0));
+    context.push(number != 0);
     return true;
 }
 
 static bool op_add(evaluation_context& context)
 {
-    script_number left, right;
-    if (!pop_binary(context, left, right))
+    script_number first, second;
+    if (!context.pop_binary(first, second))
         return false;
 
-    const auto result = left + right;
+    //*************************************************************************
+    // CONSENSUS: overflow potential.
+    //*************************************************************************
+    const auto result = first + second;
     context.stack.push_back(result.data());
     return true;
 }
 
 static bool op_sub(evaluation_context& context)
 {
-    script_number left, right;
-    if (!pop_binary(context, left, right))
+    script_number first, second;
+    if (!context.pop_binary(first, second))
         return false;
 
-    const auto result = left - right;
+    //*************************************************************************
+    // CONSENSUS: underflow potential.
+    //*************************************************************************
+    const auto result = first - second;
     context.stack.push_back(result.data());
     return true;
 }
 
 static bool op_bool_and(evaluation_context& context)
 {
-    script_number left, right;
-    if (!pop_binary(context, left, right))
+    script_number first, second;
+    if (!context.pop_binary(first, second))
         return false;
 
-    context.stack.push_back(push_bool(left != 0 && right != 0));
+    context.push(first != 0 && second != 0);
     return true;
 }
 
 static bool op_bool_or(evaluation_context& context)
 {
-    script_number left, right;
-    if (!pop_binary(context, left, right))
+    script_number first, second;
+    if (!context.pop_binary(first, second))
         return false;
 
-    context.stack.push_back(push_bool(left != 0 || right != 0));
+    context.push(first != 0 || second != 0);
     return true;
 }
 
 static bool op_num_equal(evaluation_context& context)
 {
-    script_number left, right;
-    if (!pop_binary(context, left, right))
+    script_number first, second;
+    if (!context.pop_binary(first, second))
         return false;
 
-    context.stack.push_back(push_bool(left == right));
+    context.push(first == second);
     return true;
 }
 
 static bool op_num_equal_verify(evaluation_context& context)
 {
-    script_number left, right;
-    if (!pop_binary(context, left, right))
+    script_number first, second;
+    if (!context.pop_binary(first, second))
         return false;
 
-    return left == right;
+    return first == second;
 }
 
 static bool op_num_not_equal(evaluation_context& context)
 {
-    script_number left, right;
-    if (!pop_binary(context, left, right))
+    script_number first, second;
+    if (!context.pop_binary(first, second))
         return false;
 
-    context.stack.push_back(push_bool(left != right));
+    context.push(first != second);
     return true;
 }
 
 static bool op_less_than(evaluation_context& context)
 {
-    script_number left, right;
-    if (!pop_binary(context, left, right))
+    script_number first, second;
+    if (!context.pop_binary(first, second))
         return false;
 
-    context.stack.push_back(push_bool(left < right));
+    context.push(first < second);
     return true;
 }
 
 static bool op_greater_than(evaluation_context& context)
 {
-    script_number left, right;
-    if (!pop_binary(context, left, right))
+    script_number first, second;
+    if (!context.pop_binary(first, second))
         return false;
 
-    context.stack.push_back(push_bool(left > right));
+    context.push(first > second);
     return true;
 }
 
 static bool op_less_than_or_equal(evaluation_context& context)
 {
-    script_number left, right;
-    if (!pop_binary(context, left, right))
+    script_number first, second;
+    if (!context.pop_binary(first, second))
         return false;
 
-    context.stack.push_back(push_bool(left <= right));
+    context.push(first <= second);
     return true;
 }
 
 static bool op_greater_than_or_equal(evaluation_context& context)
 {
-    script_number left, right;
-    if (!pop_binary(context, left, right))
+    script_number first, second;
+    if (!context.pop_binary(first, second))
         return false;
 
-    context.stack.push_back(push_bool(left >= right));
+    context.push(first >= second);
     return true;
 }
 
 static bool op_min(evaluation_context& context)
 {
-    script_number left, right;
-    if (!pop_binary(context, left, right))
+    script_number first, second;
+    if (!context.pop_binary(first, second))
         return false;
 
-    if (left < right)
-        context.stack.push_back(left.data());
+    if (first < second)
+        context.stack.push_back(first.data());
     else
-        context.stack.push_back(right.data());
+        context.stack.push_back(second.data());
 
     return true;
 }
 
 static bool op_max(evaluation_context& context)
 {
-    script_number left, right;
-    if (!pop_binary(context, left, right))
+    script_number first, second;
+    if (!context.pop_binary(first, second))
         return false;
 
-    auto greater = left > right ? left.data() : right.data();
+    auto greater = first > second ? first.data() : second.data();
     context.stack.emplace_back(std::move(greater));
     return true;
 }
@@ -785,10 +707,10 @@ static bool op_max(evaluation_context& context)
 static bool op_within(evaluation_context& context)
 {
     script_number upper, lower, value;
-    if (!pop_ternary(context, upper, lower, value))
+    if (!context.pop_ternary(upper, lower, value))
         return false;
 
-    context.stack.push_back(push_bool(lower <= value && value < upper));
+    context.push(lower <= value && value < upper);
     return true;
 }
 
@@ -797,7 +719,7 @@ static bool op_ripemd160(evaluation_context& context)
     if (context.stack.empty())
         return false;
 
-    const auto hash = ripemd160_hash(context.pop_stack());
+    const auto hash = ripemd160_hash(context.pop());
     context.stack.push_back(to_chunk(hash));
     return true;
 }
@@ -807,7 +729,7 @@ static bool op_sha1(evaluation_context& context)
     if (context.stack.empty())
         return false;
 
-    const auto hash = sha1_hash(context.pop_stack());
+    const auto hash = sha1_hash(context.pop());
     context.stack.push_back(to_chunk(hash));
     return true;
 }
@@ -817,7 +739,7 @@ static bool op_sha256(evaluation_context& context)
     if (context.stack.empty())
         return false;
 
-    const auto hash = sha256_hash(context.pop_stack());
+    const auto hash = sha256_hash(context.pop());
     context.stack.push_back(to_chunk(hash));
     return true;
 }
@@ -827,7 +749,7 @@ static bool op_hash160(evaluation_context& context)
     if (context.stack.empty())
         return false;
 
-    const auto hash = bitcoin_short_hash(context.pop_stack());
+    const auto hash = bitcoin_short_hash(context.pop());
     context.stack.push_back(to_chunk(hash));
     return true;
 }
@@ -837,7 +759,7 @@ static bool op_hash256(evaluation_context& context)
     if (context.stack.empty())
         return false;
 
-    const auto hash = bitcoin_hash(context.pop_stack());
+    const auto hash = bitcoin_hash(context.pop());
     context.stack.push_back(to_chunk(hash));
     return true;
 }
@@ -856,8 +778,8 @@ static signature_parse_result op_check_sig_verify(evaluation_context& context,
     if (context.stack.size() < 2)
         return signature_parse_result::invalid;
 
-    const auto pubkey = context.pop_stack();
-    auto endorsement = context.pop_stack();
+    const auto pubkey = context.pop();
+    auto endorsement = context.pop();
 
     if (endorsement.empty())
         return signature_parse_result::invalid;
@@ -891,10 +813,10 @@ static bool op_check_sig(evaluation_context& context, const script& script,
     switch (op_check_sig_verify(context, script, tx, input_index))
     {
         case signature_parse_result::valid:
-            context.stack.push_back(push_bool(true));
+            context.push(true);
             break;
         case signature_parse_result::invalid:
-            context.stack.push_back(push_bool(false));
+            context.push(false);
             break;
         case signature_parse_result::lax_encoding:
             return false;
@@ -908,25 +830,25 @@ static signature_parse_result op_check_multisig_verify(
     uint32_t input_index)
 {
     int32_t pubkeys_count;
-    if (!pop_unary(context, pubkeys_count))
+    if (!context.pop(pubkeys_count))
         return signature_parse_result::invalid;
 
     if (!context.update_pubkey_count(pubkeys_count))
         return signature_parse_result::invalid;
 
     data_stack pubkeys;
-    if (!read_section(context, pubkeys, pubkeys_count))
+    if (!context.pop(pubkeys, pubkeys_count))
         return signature_parse_result::invalid;
 
     int32_t sigs_count;
-    if (!pop_unary(context, sigs_count))
+    if (!context.pop(sigs_count))
         return signature_parse_result::invalid;
 
     if (sigs_count < 0 || sigs_count > pubkeys_count)
         return signature_parse_result::invalid;
 
     data_stack endorsements;
-    if (!read_section(context, endorsements, sigs_count))
+    if (!context.pop(endorsements, sigs_count))
         return signature_parse_result::invalid;
 
     // Due to a bug in bitcoind, we need to read an extra null value which we
@@ -993,10 +915,10 @@ static bool op_check_multisig(evaluation_context& context, const script& script,
     switch (op_check_multisig_verify(context, script, tx, input_index))
     {
         case signature_parse_result::valid:
-            context.stack.push_back(push_bool(true));
+            context.push(true);
             break;
         case signature_parse_result::invalid:
-            context.stack.push_back(push_bool(false));
+            context.push(false);
             break;
         case signature_parse_result::lax_encoding:
             return false;
@@ -1023,7 +945,7 @@ static bool op_check_locktime_verify(evaluation_context& context,
     // BIP65: We extend the (signed) CLTV script number range to 5 bytes in
     // order to reach the domain of the (unsigned) tx.locktime field.
     script_number number;
-    if (!pop_unary(context, number, max_cltv_number_size))
+    if (!context.pop(number, max_cltv_number_size))
         return false;
 
     // BIP65: the top item on the stack is less than 0.

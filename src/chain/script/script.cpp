@@ -726,7 +726,7 @@ code script::verify(const transaction& tx, uint32_t input_index,
         return error::success;
 
     // Additional validation for bip16 pay-to-script-hash script.
-    return pay_hash(tx, input_index, input_script, std::move(input_context));
+    return pay_hash(tx, input_index, input_script, input_context);
 }
 
 // private
@@ -738,18 +738,18 @@ code script::pay_hash(const transaction& tx, uint32_t input_index,
         return error::validate_inputs_failed;
 
     // Use the last stack item as the serialized script.
+    // input_context.stack cannot be empty here because out_context is true.
+    const auto& serialized = input_context.stack.back();
     script eval;
 
-    // input_context.stack cannot be empty here because out_context is true.
     // Always process a serialized script as fallback since it can be data.
-    if (!eval.from_data(input_context.stack.back(), false,
-        parse_mode::raw_data_fallback))
+    if (!eval.from_data(serialized, false, parse_mode::raw_data_fallback))
         return error::validate_inputs_failed;
 
     // Pop last item and use popped stack for evaluation of the eval script.
     input_context.stack.pop_back();
     const auto flags = input_context.flags();
-    evaluation_context eval_context(flags, 1, std::move(input_context.stack));
+    evaluation_context eval_context(flags, std::move(input_context.stack));
 
     // Evaluate the eval (serialized) script.
     if (!interpreter::run(tx, input_index, eval, eval_context))
