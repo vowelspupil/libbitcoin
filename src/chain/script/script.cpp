@@ -639,8 +639,8 @@ size_t script::sigops(bool serialized_script) const
             op.code() == opcode::checkmultisig ||
             op.code() == opcode::checkmultisigverify)
         {
-            total += serialized_script && operation::is_op_n(last_opcode) ?
-                operation::decode_op_n(last_opcode) : 
+            total += serialized_script && operation::is_positive(last_opcode) ?
+                operation::opcode_to_positive(last_opcode) :
                 multisig_default_signature_ops;
         }
 
@@ -673,11 +673,17 @@ size_t script::pay_script_hash_sigops(const script& prevout) const
     return eval.sigops(true);
 }
 
+bool script::is_pay_to_script_hash(uint32_t flags) const
+{
+    return (is_enabled(flags, rule_fork::bip16_rule) &&
+        (pattern() == script_pattern::pay_script_hash));
+}
+
 // Validation.
 //-----------------------------------------------------------------------------
-
 // static
 // TODO: return detailed result code indicating failure condition.
+
 code script::verify(const transaction& tx, uint32_t input_index,
     uint32_t flags)
 {
@@ -689,62 +695,69 @@ code script::verify(const transaction& tx, uint32_t input_index,
     return verify(tx, input_index, prevout.cache.script(), flags);
 }
 
-// static
-// TODO: return detailed result code indicating failure condition.
+
 code script::verify(const transaction& tx, uint32_t input_index,
     const script& prevout_script, uint32_t flags)
 {
     if (input_index >= tx.inputs().size())
         return error::operation_failed;
 
+    // Create a context for evaluation of the input script.
+    evaluation_context input_context(flags);
     const auto& input_script = tx.inputs()[input_index].script();
-    evaluation_context in_context(flags);
 
     // Evaluate the input script.
-    if (!interpreter::run(tx, input_index, input_script, in_context))
+    if (!interpreter::run(tx, input_index, input_script, input_context))
         return error::validate_inputs_failed;
 
-    evaluation_context out_context(flags, in_context.stack);
+    // Copy the input context stack for evaluation of the prevout script.
+    evaluation_context out_context(flags, input_context.stack);
 
     // Evaluate the output script.
     if (!interpreter::run(tx, input_index, prevout_script, out_context))
         return error::validate_inputs_failed;
 
     // Return if stack is false.
-    if (!out_context.stack_to_bool())
+    if (!out_context.stack_result())
         return error::validate_inputs_failed;
 
-    // BIP16: Additional validation for pay-to-script-hash transactions.
-    if (is_enabled(flags, rule_fork::bip16_rule) &&
-        (prevout_script.pattern() == script_pattern::pay_script_hash))
-    {
-        // Only push data operations allowed in script.
-        if (!operation::is_push_only(input_script.operations()))
-            return error::validate_inputs_failed;
+    // If the previout script is not p2sh with bip16 enabled we are done.
+    if (!prevout_script.is_pay_to_script_hash(flags))
+        return error::success;
 
-        // Use the last stack item as the serialized script.
-        script eval;
+    // Additional validation for bip16 pay-to-script-hash script.
+    return pay_hash(tx, input_index, input_script, std::move(input_context));
+}
 
-        // in_context.stack cannot be empty here because out_context is true.
-        // Always process a serialized script as fallback since it can be data.
-        if (!eval.from_data(in_context.stack.back(), false, 
-            parse_mode::raw_data_fallback))
-            return error::validate_inputs_failed;
+// private
+code script::pay_hash(const transaction& tx, uint32_t input_index,
+    const script& input_script, evaluation_context& input_context)
+{
+    // Only push data operations allowed in script.
+    if (!operation::is_push_only(input_script.operations()))
+        return error::validate_inputs_failed;
 
-        // Pop last item and use popped stack for eval script.
-        in_context.stack.pop_back();
-        evaluation_context eval_context(flags, in_context.stack);
+    // Use the last stack item as the serialized script.
+    script eval;
 
-        // Evaluate the eval (serialized) script.
-        if (!interpreter::run(tx, input_index, eval, eval_context))
-            return error::validate_inputs_failed;
+    // input_context.stack cannot be empty here because out_context is true.
+    // Always process a serialized script as fallback since it can be data.
+    if (!eval.from_data(input_context.stack.back(), false,
+        parse_mode::raw_data_fallback))
+        return error::validate_inputs_failed;
 
-        // Return the stack state.
-        if (!eval_context.stack_to_bool())
-            return error::validate_inputs_failed;
-    }
+    // Pop last item and use popped stack for evaluation of the eval script.
+    input_context.stack.pop_back();
+    const auto flags = input_context.flags();
+    evaluation_context eval_context(flags, 1, std::move(input_context.stack));
 
-    return error::success;
+    // Evaluate the eval (serialized) script.
+    if (!interpreter::run(tx, input_index, eval, eval_context))
+        return error::validate_inputs_failed;
+
+    // Return the stack state.
+    return eval_context.stack_result() ? error::success :
+        error::validate_inputs_failed;
 }
 
 } // namespace chain

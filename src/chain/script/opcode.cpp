@@ -41,37 +41,37 @@ std::string opcode_to_string(opcode value, uint32_t flags)
             return "pushdata4";
         case opcode::negative_1:
             return "-1";
-        case opcode::op_1:
+        case opcode::positive_1:
             return "1";
-        case opcode::op_2:
+        case opcode::positive_2:
             return "2";
-        case opcode::op_3:
+        case opcode::positive_3:
             return "3";
-        case opcode::op_4:
+        case opcode::positive_4:
             return "4";
-        case opcode::op_5:
+        case opcode::positive_5:
             return "5";
-        case opcode::op_6:
+        case opcode::positive_6:
             return "6";
-        case opcode::op_7:
+        case opcode::positive_7:
             return "7";
-        case opcode::op_8:
+        case opcode::positive_8:
             return "8";
-        case opcode::op_9:
+        case opcode::positive_9:
             return "9";
-        case opcode::op_10:
+        case opcode::positive_10:
             return "10";
-        case opcode::op_11:
+        case opcode::positive_11:
             return "11";
-        case opcode::op_12:
+        case opcode::positive_12:
             return "12";
-        case opcode::op_13:
+        case opcode::positive_13:
             return "13";
-        case opcode::op_14:
+        case opcode::positive_14:
             return "14";
-        case opcode::op_15:
+        case opcode::positive_15:
             return "15";
-        case opcode::op_16:
+        case opcode::positive_16:
             return "16";
         case opcode::nop:
             return "nop";
@@ -238,37 +238,37 @@ opcode opcode_from_string(const std::string& value)
     if (value == "-1")
         return opcode::negative_1;
     if (value == "1")
-        return opcode::op_1;
+        return opcode::positive_1;
     if (value == "2")
-        return opcode::op_2;
+        return opcode::positive_2;
     if (value == "3")
-        return opcode::op_3;
+        return opcode::positive_3;
     if (value == "4")
-        return opcode::op_4;
+        return opcode::positive_4;
     if (value == "5")
-        return opcode::op_5;
+        return opcode::positive_5;
     if (value == "6")
-        return opcode::op_6;
+        return opcode::positive_6;
     if (value == "7")
-        return opcode::op_7;
+        return opcode::positive_7;
     if (value == "8")
-        return opcode::op_8;
+        return opcode::positive_8;
     if (value == "9")
-        return opcode::op_9;
+        return opcode::positive_9;
     if (value == "10")
-        return opcode::op_10;
+        return opcode::positive_10;
     if (value == "11")
-        return opcode::op_11;
+        return opcode::positive_11;
     if (value == "12")
-        return opcode::op_12;
+        return opcode::positive_12;
     if (value == "13")
-        return opcode::op_13;
+        return opcode::positive_13;
     if (value == "14")
-        return opcode::op_14;
+        return opcode::positive_14;
     if (value == "15")
-        return opcode::op_15;
+        return opcode::positive_15;
     if (value == "16")
-        return opcode::op_16;
+        return opcode::positive_16;
     if (value == "nop")
         return opcode::nop;
     if (value == "if")

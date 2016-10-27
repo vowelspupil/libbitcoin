@@ -24,12 +24,13 @@
 #include <bitcoin/bitcoin/chain/script/conditional_stack.hpp>
 #include <bitcoin/bitcoin/chain/script/opcode.hpp>
 #include <bitcoin/bitcoin/chain/script/operation.hpp>
-#include <bitcoin/bitcoin/chain/script/script.hpp>
 #include <bitcoin/bitcoin/define.hpp>
 #include <bitcoin/bitcoin/utility/data.hpp>
 
 namespace libbitcoin {
 namespace chain {
+
+class BC_API script;
 
 class evaluation_context
 {
@@ -37,7 +38,8 @@ public:
     typedef operation::stack::const_iterator iterator;
 
     evaluation_context(uint32_t flags);
-    evaluation_context(uint32_t flags, const data_stack& stack);
+    evaluation_context(uint32_t flags, size_t, data_stack&& value);
+    evaluation_context(uint32_t flags, const data_stack& value);
 
     bool evaluate(const script& script);
     void reset(iterator instruction);
@@ -45,7 +47,7 @@ public:
     iterator end() const;
     uint32_t flags() const;
     data_chunk pop_stack();
-    bool stack_to_bool() const;
+    bool stack_result() const;
     bool is_stack_overflow() const;
     bool update_op_count(opcode code);
     bool update_pubkey_count(int32_t multisig_pubkeys);

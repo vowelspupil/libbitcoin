@@ -25,6 +25,11 @@
 namespace libbitcoin {
 namespace chain {
 
+conditional_stack::conditional_stack(size_t initial_capacity)
+{
+    stack_.reserve(initial_capacity);
+}
+
 bool conditional_stack::closed() const
 {
     return stack_.empty();

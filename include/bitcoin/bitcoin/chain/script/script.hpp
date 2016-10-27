@@ -25,6 +25,7 @@
 #include <string>
 #include <bitcoin/bitcoin/define.hpp>
 #include <bitcoin/bitcoin/error.hpp>
+#include <bitcoin/bitcoin/chain/script/evaluation_context.hpp>
 #include <bitcoin/bitcoin/chain/script/operation.hpp>
 #include <bitcoin/bitcoin/chain/script/rule_fork.hpp>
 #include <bitcoin/bitcoin/chain/script/script_pattern.hpp>
@@ -145,8 +146,12 @@ protected:
     void reset();
 
 private:
+    static code pay_hash(const transaction& tx, uint32_t input_index,
+        const script& input_script, evaluation_context& input_context);
+
     bool emplace(data_chunk&& raw_script);
     bool parse(const data_chunk& raw_script);
+    bool is_pay_to_script_hash(uint32_t flags) const;
 
     operation::stack operations_;
     bool is_raw_;

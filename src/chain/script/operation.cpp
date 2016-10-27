@@ -245,7 +245,10 @@ bool operation::from_data(reader& source)
 
     const auto byte = source.read_byte();
     const auto size = read_data_size(byte, source);
-    code_ = opcode_from_data_size(size);
+
+    // This is hacky because opcode cannot include its size.
+    code_ = (size == 0) ? static_cast<opcode>(byte) :
+        opcode_from_data_size(size);
 
     if (size > 0)
         data_ = source.read_bytes(size);
@@ -311,13 +314,13 @@ opcode operation::opcode_from_data_size(size_t size)
     if (size < static_cast<uint8_t>(opcode::pushdata1))
         return static_cast<opcode>(size);
 
-    if (size < max_uint8)
+    if (size <= max_uint8)
         return opcode::pushdata1;
 
-    if (size < max_uint16)
+    if (size <= max_uint16)
         return opcode::pushdata2;
 
-    if (size < max_uint32)
+    if (size <= max_uint32)
         return opcode::pushdata4;
 
     return opcode::bad_operation;
@@ -334,26 +337,26 @@ uint8_t operation::opcode_to_byte(const operation& op)
 }
 
 // Determine if code is in the op_n range.
-bool operation::is_op_n(opcode code)
+bool operation::is_positive(opcode code)
 {
     switch (code)
     {
-        case opcode::op_1:
-        case opcode::op_2:
-        case opcode::op_3:
-        case opcode::op_4:
-        case opcode::op_5:
-        case opcode::op_6:
-        case opcode::op_7:
-        case opcode::op_8:
-        case opcode::op_9:
-        case opcode::op_10:
-        case opcode::op_11:
-        case opcode::op_12:
-        case opcode::op_13:
-        case opcode::op_14:
-        case opcode::op_15:
-        case opcode::op_16:
+        case opcode::positive_1:
+        case opcode::positive_2:
+        case opcode::positive_3:
+        case opcode::positive_4:
+        case opcode::positive_5:
+        case opcode::positive_6:
+        case opcode::positive_7:
+        case opcode::positive_8:
+        case opcode::positive_9:
+        case opcode::positive_10:
+        case opcode::positive_11:
+        case opcode::positive_12:
+        case opcode::positive_13:
+        case opcode::positive_14:
+        case opcode::positive_15:
+        case opcode::positive_16:
             return true;
 
         default:
@@ -371,26 +374,10 @@ bool operation::is_push(opcode code)
         case opcode::pushdata2:
         case opcode::pushdata4:
         case opcode::negative_1:
-        case opcode::op_1:
-        case opcode::op_2:
-        case opcode::op_3:
-        case opcode::op_4:
-        case opcode::op_5:
-        case opcode::op_6:
-        case opcode::op_7:
-        case opcode::op_8:
-        case opcode::op_9:
-        case opcode::op_10:
-        case opcode::op_11:
-        case opcode::op_12:
-        case opcode::op_13:
-        case opcode::op_14:
-        case opcode::op_15:
-        case opcode::op_16:
             return true;
 
         default:
-            return false;
+            return is_positive(code);
     }
 }
 
@@ -467,12 +454,11 @@ bool operation::is_push_only(const operation::stack& ops)
 }
 
 // Return the op_n index (i.e. value of n).
-uint8_t operation::decode_op_n(opcode code)
+uint8_t operation::opcode_to_positive(opcode code)
 {
-    static const auto op_0 = static_cast<uint8_t>(opcode::op_1) - 1;
-    BITCOIN_ASSERT(is_op_n(code));
-    const auto value = static_cast<uint8_t>(code);
-    return value - op_0;
+    BITCOIN_ASSERT(is_positive(code));
+    static constexpr auto op_0 = static_cast<uint8_t>(opcode::positive_1) - 1;
+    return static_cast<uint8_t>(code) - op_0;
 }
 
 // Utilities: pattern comparisons.
@@ -488,8 +474,8 @@ bool operation::is_null_data_pattern(const operation::stack& ops)
 
 bool operation::is_pay_multisig_pattern(const operation::stack& ops)
 {
-    static constexpr size_t op_1 = static_cast<uint8_t>(opcode::op_1);
-    static constexpr size_t op_16 = static_cast<uint8_t>(opcode::op_16);
+    static constexpr size_t op_1 = static_cast<uint8_t>(opcode::positive_1);
+    static constexpr size_t op_16 = static_cast<uint8_t>(opcode::positive_16);
 
     const auto op_count = ops.size();
 
@@ -575,13 +561,13 @@ bool operation::is_sign_script_hash_pattern(const operation::stack& ops)
     if (redeem_data.empty())
         return false;
 
-    script redeem_script;
+    script redeem;
 
-    if (!redeem_script.from_data(redeem_data, false, script::parse_mode::strict))
+    if (!redeem.from_data(redeem_data, false, script::parse_mode::strict))
         return false;
 
     // Is the redeem script a standard pay (output) script?
-    const auto redeem_script_pattern = redeem_script.pattern();
+    const auto redeem_script_pattern = redeem.pattern();
     return redeem_script_pattern == script_pattern::pay_multisig
         || redeem_script_pattern == script_pattern::pay_public_key
         || redeem_script_pattern == script_pattern::pay_key_hash
@@ -632,8 +618,8 @@ operation::stack operation::to_pay_multisig_pattern(uint8_t signatures,
 operation::stack operation::to_pay_multisig_pattern(uint8_t signatures,
     const data_stack& points)
 {
-    static constexpr size_t op_1 = static_cast<uint8_t>(opcode::op_1);
-    static constexpr size_t op_16 = static_cast<uint8_t>(opcode::op_16);
+    static constexpr size_t op_1 = static_cast<uint8_t>(opcode::positive_1);
+    static constexpr size_t op_16 = static_cast<uint8_t>(opcode::positive_16);
     static constexpr size_t zero = op_1 - 1;
     static constexpr size_t max = op_16 - zero;
 

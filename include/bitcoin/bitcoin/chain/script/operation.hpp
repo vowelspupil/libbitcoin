@@ -102,13 +102,13 @@ public:
     // Utilities.
     //-------------------------------------------------------------------------
 
-    static uint8_t decode_op_n(opcode code);
+    static uint8_t opcode_to_positive(opcode code);
     static uint8_t opcode_to_byte(const operation& op);
     static opcode opcode_from_data_size(size_t size);
 
     /// Types of opcodes.
-    static bool is_op_n(opcode code);
     static bool is_push(opcode code);
+    static bool is_positive(opcode code);
     static bool is_disabled(opcode code);
     static bool is_conditional(opcode code);
     static bool is_operational(opcode code);

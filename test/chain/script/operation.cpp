@@ -83,9 +83,9 @@ BOOST_AUTO_TEST_CASE(operation__from_data__insufficient_bytes__failure)
 
 BOOST_AUTO_TEST_CASE(operation__from_data__roundtrip_reserved__success)
 {
-    const auto code = chain::opcode::special;
+    const auto code = chain::opcode::booland;
     const auto data = to_chunk(base16_literal(""));
-    const auto raw_operation = to_chunk(base16_literal("50"));
+    const auto raw_operation = to_chunk(base16_literal("9a"));
     chain::operation instance;
 
     BOOST_REQUIRE(instance.from_data(raw_operation));

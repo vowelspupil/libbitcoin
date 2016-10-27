@@ -40,6 +40,23 @@ namespace libbitcoin {
 class BC_API script_number
 {
 public:
+    static const uint8_t positive_1;
+    static const uint8_t positive_2;
+    static const uint8_t positive_3;
+    static const uint8_t positive_4;
+    static const uint8_t positive_5;
+    static const uint8_t positive_6;
+    static const uint8_t positive_7;
+    static const uint8_t positive_8;
+    static const uint8_t positive_9;
+    static const uint8_t positive_10;
+    static const uint8_t positive_11;
+    static const uint8_t positive_12;
+    static const uint8_t positive_13;
+    static const uint8_t positive_14;
+    static const uint8_t positive_15;
+    static const uint8_t positive_16;
+
     static const uint8_t negative_mask;
     static const uint8_t negative_1;
 

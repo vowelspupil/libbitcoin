@@ -19,6 +19,9 @@
  */
 #include <bitcoin/bitcoin/chain/script/evaluation_context.hpp>
 
+#include <cstddef>
+#include <cstdint>
+#include <utility>
 #include <bitcoin/bitcoin/chain/script/script.hpp>
 #include <bitcoin/bitcoin/constants.hpp>
 #include <bitcoin/bitcoin/math/script_number.hpp>
@@ -26,19 +29,35 @@
 
 namespace libbitcoin {
 namespace chain {
-
-static const auto negative = script_number::negative_mask;
+    
+static constexpr size_t stack_capactity = 42;
+static constexpr size_t alternate_capactity = 42;
+static constexpr size_t condition_capactity = 4;
 
 // Iterators must be set via run.
 evaluation_context::evaluation_context(uint32_t flags)
-  : op_count_(0), flags_(flags)
+  : op_count_(0), flags_(flags), condition(condition_capactity)
 {
+    alternate.reserve(alternate_capactity);
+    stack.reserve(stack_capactity);
 }
 
 // Iterators must be set via run.
-evaluation_context::evaluation_context(uint32_t flags, const data_stack& stack)
-  : op_count_(0), flags_(flags), stack(stack)
+evaluation_context::evaluation_context(uint32_t flags, size_t, data_stack&& value)
+  : op_count_(0), flags_(flags), condition(condition_capactity)
 {
+    alternate.reserve(alternate_capactity);
+    stack.reserve(stack_capactity);
+    stack = std::move(value);
+}
+
+// Iterators must be set via run.
+evaluation_context::evaluation_context(uint32_t flags, const data_stack& value)
+  : op_count_(0), flags_(flags), condition(condition_capactity)
+{
+    alternate.reserve(alternate_capactity);
+    stack.reserve(stack_capactity);
+    stack = value;
 }
 
 // This does not clear the stacks.
@@ -89,7 +108,7 @@ bool evaluation_context::is_stack_overflow() const
     return stack.size() + alternate.size() > max_stack_size;
 }
 
-bool evaluation_context::stack_to_bool() const
+bool evaluation_context::stack_result() const
 {
     if (stack.empty() || stack.back().empty())
         return false;
@@ -99,7 +118,8 @@ bool evaluation_context::stack_to_bool() const
 
     for (auto it = back.begin(); it != back.end(); ++it)
         if (*it != 0)
-            return !(it == last_position && *it == negative);
+            return !(it == last_position &&
+                *it == script_number::negative_mask);
 
     return false;
 }
