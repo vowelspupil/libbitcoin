@@ -134,16 +134,16 @@ uint32_t evaluation_context::flags() const
 /// Stack info.
 //-----------------------------------------------------------------------------
 
-data_chunk& evaluation_context::item(size_t back_index)
+data_chunk& evaluation_context::item(size_t index)
 {
-    return *position(back_index);
+    return *position(index);
 }
 
-data_stack::iterator evaluation_context::position(size_t back_index)
+data_stack::iterator evaluation_context::position(size_t index)
 {
     // Subtracting 1 makes back-index zero-based (unlike satoshi).
-    BITCOIN_ASSERT(back_index < stack.size());
-    return (stack.end() - 1) - back_index;
+    BITCOIN_ASSERT(index < stack.size());
+    return (stack.end() - 1) - index;
 }
 
 // bit.ly/2cowHlP
@@ -210,16 +210,16 @@ bool evaluation_context::pop_ternary(number& first, number& second,
 // Determines if the value is a valid stack index and returns the index.
 bool evaluation_context::pop_position(data_stack::iterator& out_position)
 {
-    int32_t back_index;
-    if (!pop(back_index))
+    int32_t index;
+    if (!pop(index))
         return false;
 
     // Ensure the index is within bounds.
     const auto size = stack.size();
-    if (back_index < 0 || back_index >= size)
+    if (index < 0 || index >= size)
         return false;
 
-    out_position = position(static_cast<size_t>(back_index));
+    out_position = position(static_cast<size_t>(index));
     return true;
 }
 
@@ -248,15 +248,15 @@ void evaluation_context::push(bool value)
 }
 
 // pop1/pop2/.../popi/pushi/.../push2/push1/pushi
-void evaluation_context::duplicate(size_t back_index)
+void evaluation_context::duplicate(size_t index)
 {
-    stack.push_back(item(back_index));
+    stack.push_back(item(index));
 }
 
 // pop1/pop2/push1/push2
-void evaluation_context::swap(size_t back_index_left, size_t back_index_right)
+void evaluation_context::swap(size_t index_left, size_t index_right)
 {
-    std::swap(item(back_index_left), item(back_index_right));
+    std::swap(item(index_left), item(index_right));
 }
 
 } // namespace chain

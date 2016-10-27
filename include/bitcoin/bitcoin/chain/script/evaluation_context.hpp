@@ -32,6 +32,7 @@
 namespace libbitcoin {
 namespace chain {
 
+// All index parameters are zero-based and relative to stack top.
 class BC_API script;
 
 class evaluation_context
@@ -59,8 +60,8 @@ public:
     uint32_t flags() const;
 
     /// Stack info.
-    data_chunk& item(size_t back_index);
-    data_stack::iterator position(size_t back_index);
+    data_chunk& item(size_t index);
+    data_stack::iterator position(size_t index);
     bool is_stack_overflow() const;
     bool stack_result() const;
 
@@ -75,8 +76,8 @@ public:
 
     /// Stack push.
     void push(bool value);
-    void duplicate(size_t back_index);
-    void swap(size_t back_index_left, size_t back_index_right);
+    void duplicate(size_t index);
+    void swap(size_t index_left, size_t index_right);
 
     /// Stacks.
     /// TODO: make private.
