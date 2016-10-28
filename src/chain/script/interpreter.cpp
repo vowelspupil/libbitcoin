@@ -50,6 +50,9 @@ enum class signature_parse_result
 
 static bool op_zero(evaluation_context& context)
 {
+    // op_zero behaves as an op_special with zero bytes.
+    // op_zero can push [0..2^(0*8)-1] bytes, as if pushdata0.
+    // op_zero behaves as if between op_negative_1 and op_positive_1.
     context.stack.emplace_back();
     return true;
 }
@@ -57,7 +60,8 @@ static bool op_zero(evaluation_context& context)
 // TODO: look into moving op.data() here.
 static bool op_special(evaluation_context& context, const data_chunk& data)
 {
-    BITCOIN_ASSERT(data.size() > static_cast<uint8_t>(opcode::zero));
+    // op_special with zero bytes behaves as if op_zero, but if we handle
+    // op_zero first we will not see op_special with zero bytes (though valid).
     BITCOIN_ASSERT(data.size() < static_cast<uint8_t>(opcode::pushdata1));
     context.stack.push_back(data);
     return true;
@@ -66,7 +70,7 @@ static bool op_special(evaluation_context& context, const data_chunk& data)
 // TODO: look into moving op.data() here.
 static bool op_pushdata1(evaluation_context& context, const data_chunk& data)
 {
-    BITCOIN_ASSERT(data.size() >= static_cast<uint8_t>(opcode::pushdata1));
+    // op_pushdata1 can push [0..2^(1*8)-1] bytes, overlaps op_zero/op_special.
     BITCOIN_ASSERT(data.size() <= max_uint8);
     context.stack.push_back(data);
     return true;
@@ -75,7 +79,7 @@ static bool op_pushdata1(evaluation_context& context, const data_chunk& data)
 // TODO: look into moving op.data() here.
 static bool op_pushdata2(evaluation_context& context, const data_chunk& data)
 {
-    BITCOIN_ASSERT(data.size() > max_uint8);
+    // op_pushdata2 can push [0..2^(2*8)-1] bytes, overlaps op_pushdata1.
     BITCOIN_ASSERT(data.size() <= max_uint16);
     context.stack.push_back(data);
     return true;
@@ -84,7 +88,7 @@ static bool op_pushdata2(evaluation_context& context, const data_chunk& data)
 // TODO: look into moving op.data() here.
 static bool op_pushdata4(evaluation_context& context, const data_chunk& data)
 {
-    BITCOIN_ASSERT(data.size() > max_uint16);
+    // op_pushdata4 can push [0..2^(4*8)-1] bytes, overlaps op_pushdata2.
     BITCOIN_ASSERT(data.size() <= max_uint32);
     context.stack.push_back(data);
     return true;
@@ -92,109 +96,119 @@ static bool op_pushdata4(evaluation_context& context, const data_chunk& data)
 
 static bool op_negative_1(evaluation_context& context)
 {
-    context.stack.emplace_back(script_number::negative_1);
+    context.stack.push_back({ script_number::negative_1 });
     return true;
+}
+
+static bool op_reserved(evaluation_context& context)
+{
+    return false;
 }
 
 static bool op_positive_1(evaluation_context& context)
 {
-    context.stack.emplace_back(script_number::positive_1);
+    context.stack.push_back({ script_number::positive_1 });
     return true;
 }
 
 static bool op_positive_2(evaluation_context& context)
 {
-    context.stack.emplace_back(script_number::positive_2);
+    context.stack.push_back({ script_number::positive_2 });
     return true;
 }
 
 static bool op_positive_3(evaluation_context& context)
 {
-    context.stack.emplace_back(script_number::positive_3);
+    context.stack.push_back({ script_number::positive_3 });
     return true;
 }
 
 static bool op_positive_4(evaluation_context& context)
 {
-    context.stack.emplace_back(script_number::positive_4);
+    context.stack.push_back({ script_number::positive_4 });
     return true;
 }
 
 static bool op_positive_5(evaluation_context& context)
 {
-    context.stack.emplace_back(script_number::positive_5);
+    context.stack.push_back({ script_number::positive_5 });
     return true;
 }
 
 static bool op_positive_6(evaluation_context& context)
 {
-    context.stack.emplace_back(script_number::positive_6);
+    context.stack.push_back({ script_number::positive_6 });
     return true;
 }
 
 static bool op_positive_7(evaluation_context& context)
 {
-    context.stack.emplace_back(script_number::positive_7);
+    context.stack.push_back({ script_number::positive_7 });
     return true;
 }
 
 static bool op_positive_8(evaluation_context& context)
 {
-    context.stack.emplace_back(script_number::positive_8);
+    context.stack.push_back({ script_number::positive_8 });
     return true;
 }
 
 static bool op_positive_9(evaluation_context& context)
 {
-    context.stack.emplace_back(script_number::positive_9);
+    context.stack.push_back({ script_number::positive_9 });
     return true;
 }
 
 static bool op_positive_10(evaluation_context& context)
 {
-    context.stack.emplace_back(script_number::positive_10);
+    context.stack.push_back({ script_number::positive_10 });
     return true;
 }
 
 static bool op_positive_11(evaluation_context& context)
 {
-    context.stack.emplace_back(script_number::positive_11);
+    context.stack.push_back({ script_number::positive_11 });
     return true;
 }
 
 static bool op_positive_12(evaluation_context& context)
 {
-    context.stack.emplace_back(script_number::positive_12);
+    context.stack.push_back({ script_number::positive_12 });
     return true;
 }
 
 static bool op_positive_13(evaluation_context& context)
 {
-    context.stack.emplace_back(script_number::positive_13);
+    context.stack.push_back({ script_number::positive_13 });
     return true;
 }
 
 static bool op_positive_14(evaluation_context& context)
 {
-    context.stack.emplace_back(script_number::positive_14);
+    context.stack.push_back({ script_number::positive_14 });
     return true;
 }
 
 static bool op_positive_15(evaluation_context& context)
 {
-    context.stack.emplace_back(script_number::positive_15);
+    context.stack.push_back({ script_number::positive_15 });
     return true;
 }
 
 static bool op_positive_16(evaluation_context& context)
 {
-    context.stack.emplace_back(script_number::positive_16);
+    context.stack.push_back({ script_number::positive_16 });
     return true;
 }
 
 static bool op_nop(evaluation_context& context)
 {
     return true;
+}
+
+static bool op_reserved_ver(evaluation_context& context)
+{
+    return false;
 }
 
 static bool op_if(evaluation_context& context)
@@ -216,12 +230,29 @@ static bool op_if(evaluation_context& context)
 
 static bool op_notif(evaluation_context& context)
 {
-    if (!op_if(context))
-        return false;
+    auto value = false;
 
-    // Open IF and invert for NOTIF.
-    context.condition.negate();
+    if (context.condition.succeeded())
+    {
+        if (context.stack.empty())
+            return false;
+
+        value = !context.stack_result();
+        context.pop();
+    }
+
+    context.condition.open(value);
     return true;
+}
+
+static bool op_reserved_verif(evaluation_context& context)
+{
+    return false;
+}
+
+static bool op_reserved_vernotif(evaluation_context& context)
+{
+    return false;
 }
 
 static bool op_else(evaluation_context& context)
@@ -293,8 +324,11 @@ static bool op_dup2(evaluation_context& context)
     if (context.stack.size() < 2)
         return false;
 
-    context.stack.push_back(context.item(1));
-    context.stack.push_back(context.item(0));
+    auto item1 = context.item(1);
+    auto item0 = context.item(0);
+
+    context.stack.emplace_back(std::move(item1));
+    context.stack.emplace_back(std::move(item0));
     return true;
 }
 
@@ -303,9 +337,13 @@ static bool op_dup3(evaluation_context& context)
     if (context.stack.size() < 3)
         return false;
 
-    context.stack.push_back(context.item(2));
-    context.stack.push_back(context.item(1));
-    context.stack.push_back(context.item(0));
+    auto item2 = context.item(2);
+    auto item1 = context.item(1);
+    auto item0 = context.item(0);
+
+    context.stack.emplace_back(std::move(item2));
+    context.stack.emplace_back(std::move(item1));
+    context.stack.emplace_back(std::move(item0));
     return true;
 }
 
@@ -314,9 +352,11 @@ static bool op_over2(evaluation_context& context)
     if (context.stack.size() < 4)
         return false;
 
-    // Size changes after first duplicate.
-    context.duplicate(3);
-    context.duplicate(3);
+    auto item3 = context.item(3);
+    auto item2 = context.item(2);
+
+    context.stack.emplace_back(std::move(item3));
+    context.stack.emplace_back(std::move(item2));
     return true;
 }
 
@@ -325,15 +365,15 @@ static bool op_rot2(evaluation_context& context)
     if (context.stack.size() < 6)
         return false;
 
-    const auto position_1 = context.position(5);
-    const auto position_2 = context.position(4);
+    const auto position_5 = context.position(5);
+    const auto position_4 = context.position(4);
 
-    const auto copy_1 = *position_1;
-    const auto copy_2 = *position_2;
+    auto copy_5 = *position_5;
+    auto copy_4 = *position_4;
 
-    context.stack.erase(position_1, position_2 + 1);
-    context.stack.emplace_back(std::move(copy_1));
-    context.stack.emplace_back(std::move(copy_2));
+    context.stack.erase(position_5, position_4 + 1);
+    context.stack.emplace_back(std::move(copy_5));
+    context.stack.emplace_back(std::move(copy_4));
     return true;
 }
 
@@ -353,7 +393,7 @@ static bool op_if_dup(evaluation_context& context)
         return false;
 
     if (context.stack_result())
-        context.stack.push_back(context.stack.back());
+        context.duplicate(0);
 
     return true;
 }
@@ -373,7 +413,7 @@ static bool op_drop(evaluation_context& context)
     if (context.stack.empty())
         return false;
 
-    context.stack.pop_back();
+    context.pop();
     return true;
 }
 
@@ -382,7 +422,7 @@ static bool op_dup(evaluation_context& context)
     if (context.stack.empty())
         return false;
 
-    context.stack.push_back(context.stack.back());
+    context.duplicate(0);
     return true;
 }
 
@@ -482,6 +522,16 @@ static bool op_equal_verify(evaluation_context& context)
         return false;
 
     return context.pop() == context.pop();
+}
+
+static bool op_reserved1(evaluation_context& context)
+{
+    return false;
+}
+
+static bool op_reserved2(evaluation_context& context)
+{
+    return false;
 }
 
 static bool op_add1(evaluation_context& context)
@@ -585,7 +635,7 @@ static bool op_sub(evaluation_context& context)
     //*************************************************************************
     // CONSENSUS: underflow potential.
     //*************************************************************************
-    const auto result = first - second;
+    const auto result = second - first;
     context.stack.push_back(result.data());
     return true;
 }
@@ -645,7 +695,7 @@ static bool op_less_than(evaluation_context& context)
     if (!context.pop_binary(first, second))
         return false;
 
-    context.push(first < second);
+    context.push(second < first);
     return true;
 }
 
@@ -655,7 +705,7 @@ static bool op_greater_than(evaluation_context& context)
     if (!context.pop_binary(first, second))
         return false;
 
-    context.push(first > second);
+    context.push(second > first);
     return true;
 }
 
@@ -665,7 +715,7 @@ static bool op_less_than_or_equal(evaluation_context& context)
     if (!context.pop_binary(first, second))
         return false;
 
-    context.push(first <= second);
+    context.push(second <= first);
     return true;
 }
 
@@ -675,7 +725,7 @@ static bool op_greater_than_or_equal(evaluation_context& context)
     if (!context.pop_binary(first, second))
         return false;
 
-    context.push(first >= second);
+    context.push(second >= first);
     return true;
 }
 
@@ -685,10 +735,10 @@ static bool op_min(evaluation_context& context)
     if (!context.pop_binary(first, second))
         return false;
 
-    if (first < second)
-        context.stack.push_back(first.data());
-    else
+    if (second < first)
         context.stack.push_back(second.data());
+    else
+        context.stack.push_back(first.data());
 
     return true;
 }
@@ -699,18 +749,18 @@ static bool op_max(evaluation_context& context)
     if (!context.pop_binary(first, second))
         return false;
 
-    auto greater = first > second ? first.data() : second.data();
+    auto greater = second > first ? second.data() : first.data();
     context.stack.emplace_back(std::move(greater));
     return true;
 }
 
 static bool op_within(evaluation_context& context)
 {
-    script_number upper, lower, value;
-    if (!context.pop_ternary(upper, lower, value))
+    script_number first, second, third;
+    if (!context.pop_ternary(first, second, third))
         return false;
 
-    context.push(lower <= value && value < upper);
+    context.push(second <= third && third < first);
     return true;
 }
 
@@ -719,6 +769,7 @@ static bool op_ripemd160(evaluation_context& context)
     if (context.stack.empty())
         return false;
 
+    // TODO: move buffer.
     const auto hash = ripemd160_hash(context.pop());
     context.stack.push_back(to_chunk(hash));
     return true;
@@ -729,8 +780,8 @@ static bool op_sha1(evaluation_context& context)
     if (context.stack.empty())
         return false;
 
-    const auto hash = sha1_hash(context.pop());
-    context.stack.push_back(to_chunk(hash));
+    // TODO: move buffer.
+    context.stack.push_back(to_chunk(sha1_hash(context.pop())));
     return true;
 }
 
@@ -739,8 +790,8 @@ static bool op_sha256(evaluation_context& context)
     if (context.stack.empty())
         return false;
 
-    const auto hash = sha256_hash(context.pop());
-    context.stack.push_back(to_chunk(hash));
+    // TODO: move buffer.
+    context.stack.push_back(to_chunk(sha256_hash(context.pop())));
     return true;
 }
 
@@ -749,8 +800,8 @@ static bool op_hash160(evaluation_context& context)
     if (context.stack.empty())
         return false;
 
-    const auto hash = bitcoin_short_hash(context.pop());
-    context.stack.push_back(to_chunk(hash));
+    // TODO: move buffer.
+    context.stack.push_back(to_chunk(bitcoin_short_hash(context.pop())));
     return true;
 }
 
@@ -759,8 +810,8 @@ static bool op_hash256(evaluation_context& context)
     if (context.stack.empty())
         return false;
 
-    const auto hash = bitcoin_hash(context.pop());
-    context.stack.push_back(to_chunk(hash));
+    // TODO: move buffer.
+    context.stack.push_back(to_chunk(bitcoin_hash(context.pop())));
     return true;
 }
 
@@ -768,7 +819,8 @@ static bool op_code_seperator(evaluation_context& context,
     operation::stack::const_iterator op)
 {
     // Modify context.begin() for the next op_check_[multi_]sig_verify call.
-    context.reset(op);
+    // Increment the iterator to skip past this op.
+    context.reset(op + 1);
     return true;
 }
 
@@ -927,12 +979,22 @@ static bool op_check_multisig(evaluation_context& context, const script& script,
     return true;
 }
 
+static bool op_nop1(evaluation_context& context)
+{
+    return true;
+}
+
+static bool op_nop2(evaluation_context& context)
+{
+    return true;
+}
+
 static bool op_check_locktime_verify(evaluation_context& context,
     const script& script, const transaction& tx, uint32_t input_index)
 {
     // nop2 is subsumed by checklocktimeverify when bip65 fork is active.
     if (!script::is_enabled(context.flags(), rule_fork::bip65_rule))
-        return op_nop(context);
+        return op_nop2(context);
 
     if (input_index >= tx.inputs().size())
         return false;
@@ -965,6 +1027,46 @@ static bool op_check_locktime_verify(evaluation_context& context,
     return stack <= tx.locktime();
 }
 
+static bool op_nop3(evaluation_context& context)
+{
+    return true;
+}
+
+static bool op_nop4(evaluation_context& context)
+{
+    return true;
+}
+
+static bool op_nop5(evaluation_context& context)
+{
+    return true;
+}
+
+static bool op_nop6(evaluation_context& context)
+{
+    return true;
+}
+
+static bool op_nop7(evaluation_context& context)
+{
+    return true;
+}
+
+static bool op_nop8(evaluation_context& context)
+{
+    return true;
+}
+
+static bool op_nop9(evaluation_context& context)
+{
+    return true;
+}
+
+static bool op_nop10(evaluation_context& context)
+{
+    return true;
+}
+
 // Validation - run.
 //-----------------------------------------------------------------------------
 
@@ -979,21 +1081,22 @@ bool interpreter::run(const transaction& tx, uint32_t input_index,
     // If any op returns false the execution terminates and is false.
     for (auto op = context.begin(); op != context.end(); ++op)
     {
-        // failure: static
-        if (op->data().size() > max_data_script_size ||
-            !operation::is_operational(op->code()) ||
-            !context.update_op_count(op->code()))
+        if(!operation::is_oversized(*op))
             return false;
 
-        // short circut this operation
-        if (!operation::is_conditional(op->code()) &&
-            !context.condition.succeeded())
+        // Disabled codes handled here.
+        if (operation::is_disabled(*op) || !context.update_op_count(*op))
+            return false;
+
+        // This is why disabled and reserved codes must be allowed.
+        if (context.is_short_circuited(*op))
             continue;
 
-        // failure: dynamic
-        if (!run_op(op, tx, input_index, script, context) ||
-            context.is_stack_overflow())
+        // Reserved codes handled here.
+        if (!run_op(op, tx, input_index, script, context))
             return false;
+
+        return !context.is_stack_overflow();
     }
 
     // Confirm that scopes are paired.
@@ -1024,6 +1127,8 @@ bool interpreter::run_op(operation::stack::const_iterator op,
             return op_pushdata4(context, op->data());
         case opcode::negative_1:
             return op_negative_1(context);
+        case opcode::reserved:
+            return op_reserved(context);
         case opcode::positive_1:
             return op_positive_1(context);
         case opcode::positive_2:
@@ -1056,10 +1161,18 @@ bool interpreter::run_op(operation::stack::const_iterator op,
             return op_positive_15(context);
         case opcode::positive_16:
             return op_positive_16(context);
+        case opcode::nop:
+            return op_nop(context);
+        case opcode::reserved_ver:
+            return op_reserved_ver(context);
         case opcode::if_:
             return op_if(context);
         case opcode::notif:
             return op_notif(context);
+        case opcode::reserved_verif:
+            return op_reserved_verif(context);
+        case opcode::reserved_vernotif:
+            return op_reserved_vernotif(context);
         case opcode::else_:
             return op_else(context);
         case opcode::endif:
@@ -1106,16 +1219,40 @@ bool interpreter::run_op(operation::stack::const_iterator op,
             return op_swap(context);
         case opcode::tuck:
             return op_tuck(context);
+        ////case opcode::disabled_cat:
+        ////    return op_disabled_cat(context);
+        ////case opcode::disabled_substr:
+        ////    return op_disabled_substr(context);
+        ////case opcode::disabled_left:
+        ////    return op_disabled_left(context);
+        ////case opcode::disabled_right:
+        ////    return op_disabled_right(context);
         case opcode::size:
             return op_size(context);
+        ////case opcode::disabled_invert:
+        ////    return op_disabled_invert(context);
+        ////case opcode::disabled_and:
+        ////    return op_disabled_and(context);
+        ////case opcode::disabled_or:
+        ////    return op_disabled_or(context);
+        ////case opcode::disabled_xor:
+        ////    return op_disabled_xor(context);
         case opcode::equal:
             return op_equal(context);
         case opcode::equalverify:
             return op_equal_verify(context);
+        case opcode::reserved1:
+            return op_reserved1(context);
+        case opcode::reserved2:
+            return op_reserved2(context);
         case opcode::add1:
             return op_add1(context);
         case opcode::sub1:
             return op_sub1(context);
+        ////case opcode::disabled_2mul:
+        ////    return op_disabled_2mul(context);
+        ////case opcode::disabled_2div:
+        ////    return op_disabled_2div(context);
         case opcode::negate:
             return op_negate(context);
         case opcode::abs:
@@ -1128,6 +1265,16 @@ bool interpreter::run_op(operation::stack::const_iterator op,
             return op_add(context);
         case opcode::sub:
             return op_sub(context);
+        ////case opcode::disabled_mul:
+        ////    return op_disabled_mul(context);
+        ////case opcode::disabled_div:
+        ////    return op_disabled_div(context);
+        ////case opcode::disabled_mod:
+        ////    return op_disabled_mod(context);
+        ////case opcode::disabled_lshift:
+        ////    return op_disabled_lshift(context);
+        ////case opcode::disabled_rshift:
+        ////    return op_disabled_rshift(context);
         case opcode::booland:
             return op_bool_and(context);
         case opcode::boolor:
@@ -1172,32 +1319,30 @@ bool interpreter::run_op(operation::stack::const_iterator op,
             return op_check_multisig(context, script, tx, input_index);
         case opcode::checkmultisigverify:
             return op_check_multisig_verify(context, script, tx, input_index) == signature_parse_result::valid;
-        case opcode::checklocktimeverify:
-             return op_check_locktime_verify(context, script, tx, input_index);
-        case opcode::nop:
-            return op_nop(context);
         case opcode::nop1:
-            return op_nop(context);
+            return op_nop1(context);
         ////case opcode::nop2:
-        ////    return op_nop(context);
+        ////    return op_nop2(context);
+        case opcode::checklocktimeverify:
+            return op_check_locktime_verify(context, script, tx, input_index);
         case opcode::nop3:
-            return op_nop(context);
+            return op_nop3(context);
         case opcode::nop4:
-            return op_nop(context);
+            return op_nop4(context);
         case opcode::nop5:
-            return op_nop(context);
+            return op_nop5(context);
         case opcode::nop6:
-            return op_nop(context);
+            return op_nop6(context);
         case opcode::nop7:
-            return op_nop(context);
+            return op_nop7(context);
         case opcode::nop8:
-            return op_nop(context);
+            return op_nop8(context);
         case opcode::nop9:
-            return op_nop(context);
+            return op_nop9(context);
         case opcode::nop10:
-            return op_nop(context);
+            return op_nop10(context);
         default:
-            BITCOIN_ASSERT_MSG(false, "Cannot run non-operational op code.");
+            BITCOIN_ASSERT_MSG(false, "Cannot run non-operational code.");
             return false;
     }
 }

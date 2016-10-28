@@ -102,18 +102,21 @@ public:
     // Utilities.
     //-------------------------------------------------------------------------
 
+    static bool is_disabled(const operation& op);
+    static bool is_oversized(const operation& op);
     static uint8_t opcode_to_positive(opcode code);
     static uint8_t opcode_to_byte(const operation& op);
     static opcode opcode_from_size(size_t size);
 
     /// Types of opcodes.
     static bool is_wire(opcode code);
+    static bool is_wire_special(opcode code);
     static bool is_push(opcode code);
+    static bool is_counted(opcode code);
     static bool is_positive(opcode code);
     static bool is_disabled(opcode code);
+    static bool is_reserved(opcode code);
     static bool is_conditional(opcode code);
-    static bool is_operational(opcode code);
-    static bool is_executable( opcode code);
     static bool is_push_only(const operation::stack& operations);
 
     /// unspendable pattern (standard)

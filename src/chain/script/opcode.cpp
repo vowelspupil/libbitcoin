@@ -41,6 +41,8 @@ std::string opcode_to_string(opcode value, uint32_t flags)
             return "pushdata4";
         case opcode::negative_1:
             return "-1";
+        case opcode::reserved:
+            return "reserved";
         case opcode::positive_1:
             return "1";
         case opcode::positive_2:
@@ -75,10 +77,16 @@ std::string opcode_to_string(opcode value, uint32_t flags)
             return "16";
         case opcode::nop:
             return "nop";
+        case opcode::reserved_ver:
+            return "ver";
         case opcode::if_:
             return "if";
         case opcode::notif:
             return "notif";
+        case opcode::reserved_verif:
+            return "verif";
+        case opcode::reserved_vernotif:
+            return "vernotif";
         case opcode::else_:
             return "else";
         case opcode::endif:
@@ -125,16 +133,40 @@ std::string opcode_to_string(opcode value, uint32_t flags)
             return "swap";
         case opcode::tuck:
             return "tuck";
+        case opcode::disabled_cat:
+            return "cat";
+        case opcode::disabled_substr:
+            return "substr";
+        case opcode::disabled_left:
+            return "left";
+        case opcode::disabled_right:
+            return "right";
         case opcode::size:
             return "size";
+        case opcode::disabled_invert:
+            return "invert";
+        case opcode::disabled_and:
+            return "and";
+        case opcode::disabled_or:
+            return "or";
+        case opcode::disabled_xor:
+            return "xor";
         case opcode::equal:
             return "equal";
         case opcode::equalverify:
             return "equalverify";
+        case opcode::reserved1:
+            return "reserved1";
+        case opcode::reserved2:
+            return "reserved2";
         case opcode::add1:
             return "add1";
         case opcode::sub1:
             return "sub1";
+        case opcode::disabled_2mul:
+            return "2mul";
+        case opcode::disabled_2div:
+            return "2div";
         case opcode::negate:
             return "negate";
         case opcode::abs:
@@ -147,6 +179,16 @@ std::string opcode_to_string(opcode value, uint32_t flags)
             return "add";
         case opcode::sub:
             return "sub";
+        case opcode::disabled_mul:
+            return "mul";
+        case opcode::disabled_div:
+            return "div";
+        case opcode::disabled_mod:
+            return "mod";
+        case opcode::disabled_lshift:
+            return "lshift";
+        case opcode::disabled_rshift:
+            return "rshift";
         case opcode::booland:
             return "booland";
         case opcode::boolor:
@@ -237,6 +279,8 @@ opcode opcode_from_string(const std::string& value)
         return opcode::pushdata4;
     if (value == "-1")
         return opcode::negative_1;
+    if (value == "reserved")
+        return opcode::reserved;
     if (value == "1")
         return opcode::positive_1;
     if (value == "2")
@@ -271,10 +315,16 @@ opcode opcode_from_string(const std::string& value)
         return opcode::positive_16;
     if (value == "nop")
         return opcode::nop;
+    if (value == "ver")
+        return opcode::reserved_ver;
     if (value == "if")
         return opcode::if_;
     if (value == "notif")
         return opcode::notif;
+    if (value == "verif")
+        return opcode::reserved_verif;
+    if (value == "vernotif")
+        return opcode::reserved_vernotif;
     if (value == "else")
         return opcode::else_;
     if (value == "endif")
@@ -321,8 +371,24 @@ opcode opcode_from_string(const std::string& value)
         return opcode::swap;
     if (value == "tuck")
         return opcode::tuck;
+    if (value == "cat")
+        return opcode::disabled_cat;
+    if (value == "substr")
+        return opcode::disabled_substr;
+    if (value == "left")
+        return opcode::disabled_left;
+    if (value == "right")
+        return opcode::disabled_right;
     if (value == "size")
         return opcode::size;
+    if (value == "invert")
+        return opcode::disabled_invert;
+    if (value == "and")
+        return opcode::disabled_and;
+    if (value == "or")
+        return opcode::disabled_or;
+    if (value == "xor")
+        return opcode::disabled_xor;
     if (value == "equal")
         return opcode::equal;
     if (value == "equalverify")
@@ -331,6 +397,10 @@ opcode opcode_from_string(const std::string& value)
         return opcode::add1;
     if (value == "sub1")
         return opcode::sub1;
+    if (value == "2mul")
+        return opcode::disabled_2mul;
+    if (value == "2div")
+        return opcode::disabled_2div;
     if (value == "negate")
         return opcode::negate;
     if (value == "abs")
@@ -343,6 +413,16 @@ opcode opcode_from_string(const std::string& value)
         return opcode::add;
     if (value == "sub")
         return opcode::sub;
+    if (value == "mul")
+        return opcode::disabled_mul;
+    if (value == "div")
+        return opcode::disabled_div;
+    if (value == "mod")
+        return opcode::disabled_mod;
+    if (value == "lshift")
+        return opcode::disabled_lshift;
+    if (value == "rshift")
+        return opcode::disabled_rshift;
     if (value == "booland")
         return opcode::booland;
     if (value == "boolor")

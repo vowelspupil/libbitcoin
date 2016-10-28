@@ -27,7 +27,10 @@
 #include <bitcoin/bitcoin/utility/assert.hpp>
 
 namespace libbitcoin {
-
+    
+const uint8_t script_number::negative_1 = negative_mask | positive_1;
+const uint8_t script_number::negative_0 = negative_mask | positive_0;
+const uint8_t script_number::positive_0 = 0;
 const uint8_t script_number::positive_1 = 1;
 const uint8_t script_number::positive_2 = 2;
 const uint8_t script_number::positive_3 = 3;
@@ -44,9 +47,7 @@ const uint8_t script_number::positive_13 = 13;
 const uint8_t script_number::positive_14 = 14;
 const uint8_t script_number::positive_15 = 15;
 const uint8_t script_number::positive_16 = 16;
-
 const uint8_t script_number::negative_mask = 0x80;
-const uint8_t script_number::negative_1 = negative_mask | positive_1;
 
 static constexpr auto unsigned_max_int64 = static_cast<uint64_t>(max_int64);
 static constexpr auto absolute_min_int64 = static_cast<uint64_t>(min_int64);

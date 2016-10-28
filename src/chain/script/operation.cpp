@@ -300,9 +300,7 @@ void operation::set_data(const data_chunk& data)
 // private
 uint32_t operation::read_data_size(uint8_t byte, reader& source)
 {
-    // For 0 through 75 the wire opcode is also the data size.
-    if (byte < static_cast<uint8_t>(opcode::pushdata1))
-        return byte;
+    static constexpr auto pushdata1 = static_cast<uint8_t>(opcode::pushdata1);
 
     switch (static_cast<opcode>(byte))
     {
@@ -313,9 +311,19 @@ uint32_t operation::read_data_size(uint8_t byte, reader& source)
         case opcode::pushdata4:
             return source.read_4_bytes_little_endian();
         default:
-            // This is not a push data code.
-            return 0;
+            // For 0 through 75 the wire opcode is also the data size.
+            return byte < pushdata1 ? byte : 0;
     }
+}
+
+bool operation::is_disabled(const operation& op)
+{
+    return is_disabled(op.code());
+}
+
+bool operation::is_oversized(const operation& op)
+{
+    return op.data().size() > max_data_script_size;
 }
 
 opcode operation::opcode_from_size(size_t size)
@@ -341,13 +349,40 @@ opcode operation::opcode_from_size(size_t size)
 uint8_t operation::opcode_to_byte(const operation& op)
 {
     // For 0 through 75 the wire opcode is also the data size.
-    if (op.code_ == opcode::special)
-        return safe_unsigned<uint8_t>(op.data_.size());
-
-    return static_cast<uint8_t>(op.code_);
+    return (op.code_ == opcode::special) ?
+        safe_unsigned<uint8_t>(op.data_.size()) :
+        static_cast<uint8_t>(op.code_);
 }
 
-// Determine if code is in the op_n range.
+// Determine if code pushes data onto the stack.
+bool operation::is_push(opcode code)
+{
+    switch (code)
+    {
+        case opcode::zero:
+        case opcode::special:
+        case opcode::pushdata1:
+        case opcode::pushdata2:
+        case opcode::pushdata4:
+        case opcode::negative_1:
+            return true;
+
+        default:
+            return is_positive(code);
+    }
+}
+
+// Operation counter increments for all codes above op_positive_16.
+bool operation::is_counted(opcode code)
+{
+    static constexpr auto low = static_cast<uint8_t>(opcode::nop);
+    static constexpr auto high = static_cast<uint8_t>(opcode::nop10);
+
+    const auto value = static_cast<uint8_t>(code);
+    return value >= low && value <= high;
+}
+
+// Determine if code pushes a positive number [1..16] onto the stack.
 bool operation::is_positive(opcode code)
 {
     switch (code)
@@ -375,23 +410,7 @@ bool operation::is_positive(opcode code)
     }
 }
 
-bool operation::is_push(opcode code)
-{
-    switch (code)
-    {
-        case opcode::zero:
-        case opcode::special:
-        case opcode::pushdata1:
-        case opcode::pushdata2:
-        case opcode::pushdata4:
-        case opcode::negative_1:
-            return true;
-
-        default:
-            return is_positive(code);
-    }
-}
-
+// Determine if code is a conditional operator.
 bool operation::is_conditional(opcode code)
 {
     switch (code)
@@ -407,30 +426,28 @@ bool operation::is_conditional(opcode code)
     }
 }
 
+// These codes are parsed and contribute to op count.
+// If they are encountered in execution they cause failure.
+// These can not be skipped due to conditional execution so they always fail.
 bool operation::is_disabled(opcode code)
 {
     switch (code)
     {
-        case opcode::disabled_98:
-        case opcode::disabled_101:
-        case opcode::disabled_102:
-        case opcode::disabled_126:
-        case opcode::disabled_127:
-        case opcode::disabled_128:
-        case opcode::disabled_129:
-        case opcode::disabled_131:
-        case opcode::disabled_132:
-        case opcode::disabled_133:
-        case opcode::disabled_134:
-        case opcode::disabled_137:
-        case opcode::disabled_138:
-        case opcode::disabled_141:
-        case opcode::disabled_142:
-        case opcode::disabled_149:
-        case opcode::disabled_150:
-        case opcode::disabled_151:
-        case opcode::disabled_152:
-        case opcode::disabled_153:
+        case opcode::disabled_cat:
+        case opcode::disabled_substr:
+        case opcode::disabled_left:
+        case opcode::disabled_right:
+        case opcode::disabled_invert:
+        case opcode::disabled_and:
+        case opcode::disabled_or:
+        case opcode::disabled_xor:
+        case opcode::disabled_2mul:
+        case opcode::disabled_2div:
+        case opcode::disabled_mul:
+        case opcode::disabled_div:
+        case opcode::disabled_mod:
+        case opcode::disabled_lshift:
+        case opcode::disabled_rshift:
             return true;
 
         default:
@@ -438,28 +455,46 @@ bool operation::is_disabled(opcode code)
     }
 }
 
-bool operation::is_executable(opcode code)
+// These codes are parsed and, except for op_reserved, contribute to op count.
+// If they are encountered in execution they cause failure.
+// Due to conditional execution it is possible for them to be skipped.
+bool operation::is_reserved(opcode code)
 {
-    static constexpr auto minimum = static_cast<uint8_t>(opcode::nop);
-    static constexpr auto maximum = static_cast<uint8_t>(opcode::nop10);
+    switch (code)
+    {
+        case opcode::reserved:
+        case opcode::reserved_ver:
+        case opcode::reserved_verif:
+        case opcode::reserved_vernotif:
+        case opcode::reserved1:
+        case opcode::reserved2:
+            return true;
 
-    const auto value = static_cast<uint8_t>(code);
-    return value >= minimum && value <= maximum && !is_disabled(code);
+        default:
+            return false;
+    }
 }
 
-bool operation::is_operational(opcode code)
-{
-    return is_push(code) || is_executable(code);
-}
-
-// Wire opcodes include specials. These map into opcode::special for execution.
+// Wire codes are those that deserialize.
+// Wire opcodes include disabled/reserved, which parse but fail run if hit.
+// Wire opcodes include specials, which map into opcode::special for execution.
 bool operation::is_wire(opcode code)
 {
-    static constexpr auto minimum = static_cast<uint8_t>(opcode::zero);
-    static constexpr auto maximum = static_cast<uint8_t>(opcode::nop10);
+    static constexpr auto low = static_cast<uint8_t>(opcode::zero);
+    static constexpr auto high = static_cast<uint8_t>(opcode::nop10);
 
     const auto value = static_cast<uint8_t>(code);
-    return value >= minimum && value <= maximum && !is_disabled(code);
+    return value >= low && value <= high;
+}
+
+// Wire special codes are those that are mapped to the "special" operator.
+bool operation::is_wire_special(opcode code)
+{
+    static constexpr auto below = static_cast<uint8_t>(opcode::zero);
+    static constexpr auto above = static_cast<uint8_t>(opcode::pushdata1);
+
+    const auto value = static_cast<uint8_t>(code);
+    return value > below && value < above;
 }
 
 bool operation::is_push_only(const operation::stack& ops)
@@ -472,7 +507,7 @@ bool operation::is_push_only(const operation::stack& ops)
     return std::all_of(ops.begin(), ops.end(), push);
 }
 
-// Return the op_n index (i.e. value of n).
+// Return the op_positive_# index (i.e. value of #).
 uint8_t operation::opcode_to_positive(opcode code)
 {
     BITCOIN_ASSERT(is_positive(code));

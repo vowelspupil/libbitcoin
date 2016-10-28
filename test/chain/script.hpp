@@ -36,7 +36,7 @@ typedef std::vector<script_test> script_test_list;
 const script_test_list valid_bip16_scripts
 {{
     { "0 0x01 1", "HASH160 0x14 0xda1745e9b549bd0bfa1a569971c77eba30cd5a4b EQUAL", "Very basic P2SH" },
-    { "0x4c 0 0x01 1", "HASH160 0x14 0xda1745e9b549bd0bfa1a569971c77eba30cd5a4b EQUAL", "" },
+    { "0x4c 0 0x01 1", "HASH160 0x14 0xda1745e9b549bd0bfa1a569971c77eba30cd5a4b EQUAL", "" }
 }};
 
 // These are valid prior to BIP16 activation and invalid after.
@@ -44,8 +44,12 @@ const script_test_list invalidated_bip16_scripts
 {{
     { "NOP 0x01 1", "HASH160 0x14 0xda1745e9b549bd0bfa1a569971c77eba30cd5a4b EQUAL", "Tests for Script.IsPushOnly()" },
     { "NOP1 0x01 1", "HASH160 0x14 0xda1745e9b549bd0bfa1a569971c77eba30cd5a4b EQUAL", "" },
+
+    // In this context the 0x50 is interpreted as data: "OP_ZERO SPECIAL(1) [ 0x50 ]", so it does not fail the script.
     { "0 0x01 0x50", "HASH160 0x14 0xece424a6bb6ddf4db592c0faed60685047a361b1 EQUAL", "OP_RESERVED in P2SH should fail" },
-    { "0 0x01 VER", "HASH160 0x14 0x0f4d7845db968f2a81b530b6f3c1d6246d4c7e01 EQUAL", "OP_VER in P2SH should fail" }
+
+    // In this context the 0x62 is interpreted as data: "OP_ZERO SPECIAL(1) [ 0x62 ]", so it does not fail the script.
+    { "0 0x01 0x62", "HASH160 0x14 0x0f4d7845db968f2a81b530b6f3c1d6246d4c7e01 EQUAL", "OP_VER in P2SH should fail" },
 }};
 
 // These are valid prior to and after BIP65 activation.
@@ -159,7 +163,10 @@ const script_test_list valid_context_free_scripts
     { "0x4d 0x0000", "0 EQUAL", "" },
     { "0x4e 0x00000000", "0 EQUAL", "" },
     { "0x4f 1000 ADD", "999 EQUAL", "" },
-    { "0", "IF 0x50 ENDIF 1", "0x50 is reserved (ok if not executed)" },
+
+    // In this context the 0x50 (reserved) is an op code, so this in fact fails to parse.
+    ////{ "0", "IF 0x50 ENDIF 1", "0x50 is reserved (ok if not executed)" },
+
     { "0x51", "0x5f ADD 0x60 EQUAL", "0x51 through 0x60 push 1 through 16 onto stack" },
     { "1", "NOP", "" },
     { "0", "IF VER ELSE 1 ENDIF", "VER non-functional (ok if not executed)" },

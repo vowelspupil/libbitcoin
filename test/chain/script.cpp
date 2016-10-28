@@ -180,8 +180,8 @@ bool parse_token(data_chunk& raw_script, data_chunk& raw_hex, std::string token)
     }
     else if (is_opcode(token))
     {
-        opcode tokenized_opcode = token_to_opcode(token);
-        raw_script.push_back(static_cast<uint8_t>(tokenized_opcode));
+        const auto opcode = token_to_opcode(token);
+        raw_script.push_back(static_cast<uint8_t>(opcode));
     }
     else
     {
@@ -209,8 +209,7 @@ bool parse(script& result_script, std::string format)
 
     parse_token(raw_script, raw_hex, sentinel);
 
-    if (!result_script.from_data(raw_script, false,
-        script::parse_mode::strict))
+    if (!result_script.from_data(raw_script, false, script::parse_mode::strict))
         return false;
 
     if (result_script.operations().empty())

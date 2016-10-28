@@ -51,7 +51,7 @@ public:
     void reset(op_iterator instruction);
 
     /// Operation count.
-    bool update_op_count(opcode code);
+    bool update_op_count(const operation& op);
     bool update_pubkey_count(int32_t multisig_pubkeys);
 
     /// Properties.
@@ -62,6 +62,7 @@ public:
     /// Stack info.
     data_chunk& item(size_t index);
     data_stack::iterator position(size_t index);
+    bool is_short_circuited(const operation& op) const;
     bool is_stack_overflow() const;
     bool stack_result() const;
 

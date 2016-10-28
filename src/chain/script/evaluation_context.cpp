@@ -93,10 +93,10 @@ inline bool overflow_op_count(size_t count)
     return count > op_counter_limit;
 }
 
-bool evaluation_context::update_op_count(opcode code)
+bool evaluation_context::update_op_count(const operation& op)
 {
     // Addition is safe due to script size validation.
-    if (!operation::is_push(code))
+    if (operation::is_counted(op.code()))
         ++op_count_;
 
     return !overflow_op_count(op_count_);
@@ -146,6 +146,11 @@ data_stack::iterator evaluation_context::position(size_t index)
     return (stack.end() - 1) - index;
 }
 
+bool evaluation_context::is_short_circuited(const operation& op) const
+{
+    return !(operation::is_conditional(op.code()) || condition.succeeded());
+}
+
 // bit.ly/2cowHlP
 bool evaluation_context::is_stack_overflow() const
 {
@@ -153,18 +158,19 @@ bool evaluation_context::is_stack_overflow() const
     return stack.size() + alternate.size() > max_stack_size;
 }
 
+// This call must be guarded.
 bool evaluation_context::stack_result() const
 {
-    const auto& back = stack.back();
-    if (stack.empty() || back.empty())
+    BITCOIN_ASSERT(!stack.empty());
+    const auto back = stack.back();
+
+    if (back.empty())
         return false;
 
     const auto last = back.end() - 1;
-
-    // TODO: turn this into something understandble.
     for (auto it = back.begin(); it != back.end(); ++it)
         if (*it != 0)
-            return !(it == last && *it == number::negative_mask);
+            return !(it == last && *it == number::negative_0);
 
     return false;
 }
@@ -244,9 +250,9 @@ bool evaluation_context::pop(data_stack& section, size_t count)
 void evaluation_context::push(bool value)
 {
     if (value)
-        stack.emplace_back(number::positive_1);
+        stack.push_back({ number::positive_1 });
     else
-        stack.emplace_back();
+        stack.push_back({});
 }
 
 // pop1/pop2/.../popi/pushi/.../push2/push1/pushi

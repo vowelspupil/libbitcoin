@@ -36,42 +36,43 @@ namespace chain {
 enum class opcode : uint8_t
 {
     //-------------------------------------------------------------------------
-    // These are data.
+    // is_push (excludes op_reserved)
 
     zero = 0,
-    /* opcode::special range 1-76, wire opcodes but not internal opcodes */
+    /* opcode::special range 1-75, wire opcodes but not internal opcodes */
     pushdata1 = 76,
     pushdata2 = 77,
     pushdata4 = 78,
     negative_1 = 79,
-    positive_1 = 81,
-    positive_2 = 82,
-    positive_3 = 83,
-    positive_4 = 84,
-    positive_5 = 85,
-    positive_6 = 86,
-    positive_7 = 87,
-    positive_8 = 88,
-    positive_9 = 89,
-    positive_10 = 90,
-    positive_11 = 91,
-    positive_12 = 92,
-    positive_13 = 93,
-    positive_14 = 94,
-    positive_15 = 95,
-    positive_16 = 96,
+    reserved = 80,          // is_reserved
+    positive_1 = 81,        // is_positive
+    positive_2 = 82,        // is_positive
+    positive_3 = 83,        // is_positive
+    positive_4 = 84,        // is_positive
+    positive_5 = 85,        // is_positive
+    positive_6 = 86,        // is_positive
+    positive_7 = 87,        // is_positive
+    positive_8 = 88,        // is_positive
+    positive_9 = 89,        // is_positive
+    positive_10 = 90,       // is_positive
+    positive_11 = 91,       // is_positive
+    positive_12 = 92,       // is_positive
+    positive_13 = 93,       // is_positive
+    positive_14 = 94,       // is_positive
+    positive_15 = 95,       // is_positive
+    positive_16 = 96,       // is_positive
 
     //-------------------------------------------------------------------------
-    // These are executable.
+    // is_counted
 
     nop = 97,
-    disabled_98 = 98,
-    if_ = 99,
-    notif = 100,
-    disabled_101 = 101,
-    disabled_102 = 102,
-    else_ = 103,
-    endif = 104,
+    reserved_ver = 98,      // is_reserved
+    if_ = 99,               // is_conditional
+    notif = 100,            // is_conditional
+    reserved_verif = 101,   // is_reserved
+    reserved_vernotif = 102,// is_reserved
+    else_ = 103,            // is_conditional
+    endif = 104,            // is_conditional
     verify = 105,
     return_ = 106,
     toaltstack = 107,
@@ -93,34 +94,34 @@ enum class opcode : uint8_t
     rot = 123,
     swap = 124,
     tuck = 125,
-    disabled_126 = 126,
-    disabled_127 = 127,
-    disabled_128 = 128,
-    disabled_129 = 129,
+    disabled_cat = 126,     // is_disabled
+    disabled_substr = 127,  // is_disabled
+    disabled_left = 128,    // is_disabled
+    disabled_right = 129,   // is_disabled
     size = 130,
-    disabled_131 = 131,
-    disabled_132 = 132,
-    disabled_133 = 133,
-    disabled_134 = 134,
+    disabled_invert = 131,  // is_disabled
+    disabled_and = 132,     // is_disabled
+    disabled_or = 133,      // is_disabled
+    disabled_xor = 134,     // is_disabled
     equal = 135,
     equalverify = 136,
-    disabled_137 = 137,
-    disabled_138 = 138,
+    reserved1 = 137,        // is_disabled
+    reserved2 = 138,        // is_disabled
     add1 = 139,
     sub1 = 140,
-    disabled_141 = 141,
-    disabled_142 = 142,
+    disabled_2mul = 141,    // is_disabled
+    disabled_2div = 142,    // is_disabled
     negate = 143,
     abs = 144,
     not_ = 145,
     nonzero = 146,
     add = 147,
     sub = 148,
-    disabled_149 = 149,
-    disabled_150 = 150,
-    disabled_151 = 151,
-    disabled_152 = 152,
-    disabled_153 = 153,
+    disabled_mul = 149,     // is_disabled
+    disabled_div = 150,     // is_disabled
+    disabled_mod = 151,     // is_disabled
+    disabled_lshift = 152,  // is_disabled
+    disabled_rshift = 153,  // is_disabled
     booland = 154,
     boolor = 155,
     numequal = 156,
@@ -155,6 +156,7 @@ enum class opcode : uint8_t
     nop9 = 184,
     nop10 = 185,
 
+    // All above are is_wire.
     //-------------------------------------------------------------------------
     // These are sentinels (values are arbitry).
 
