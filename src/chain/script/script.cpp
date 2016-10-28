@@ -737,7 +737,7 @@ code script::pay_hash(const transaction& tx, uint32_t input_index,
     // Pop last item and use popped stack for evaluation of the eval script.
     input_context.stack.pop_back();
     const auto flags = input_context.flags();
-    evaluation_context eval_context(flags, std::move(input_context.stack));
+    evaluation_context eval_context(flags, input_context.stack);
 
     // Evaluate the eval (serialized) script.
     if (!interpreter::run(tx, input_index, eval, eval_context))

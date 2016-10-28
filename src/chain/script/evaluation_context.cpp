@@ -46,14 +46,14 @@ evaluation_context::evaluation_context(uint32_t flags)
     stack.reserve(stack_capactity);
 }
 
-// Iterators must be set via run.
-evaluation_context::evaluation_context(uint32_t flags, data_stack&& value)
-  : op_count_(0), flags_(flags), condition(condition_capactity)
-{
-    alternate.reserve(alternate_capactity);
-    stack.reserve(stack_capactity);
-    stack = std::move(value);
-}
+////// Iterators must be set via run.
+////evaluation_context::evaluation_context(uint32_t flags, data_stack&& value)
+////  : op_count_(0), flags_(flags), condition(condition_capactity)
+////{
+////    alternate.reserve(alternate_capactity);
+////    stack.reserve(stack_capactity);
+////    stack = std::move(value);
+////}
 
 // Iterators must be set via run.
 evaluation_context::evaluation_context(uint32_t flags, const data_stack& value)
@@ -161,16 +161,22 @@ bool evaluation_context::is_stack_overflow() const
 // This call must be guarded.
 bool evaluation_context::stack_result() const
 {
-    BITCOIN_ASSERT(!stack.empty());
-    const auto back = stack.back();
+    if (stack.empty())
+        return false;
 
+    const auto& back = stack.back();
     if (back.empty())
         return false;
 
     const auto last = back.end() - 1;
     for (auto it = back.begin(); it != back.end(); ++it)
+    {
         if (*it != 0)
+        {
+            // It's not non-zero it's the terminating negative sentinel.
             return !(it == last && *it == number::negative_0);
+        }
+    }
 
     return false;
 }

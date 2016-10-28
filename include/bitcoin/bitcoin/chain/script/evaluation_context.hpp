@@ -43,7 +43,7 @@ public:
 
     /// Constructors.
     evaluation_context(uint32_t flags);
-    evaluation_context(uint32_t flags, data_stack&& value);
+    ////evaluation_context(uint32_t flags, data_stack&& value);
     evaluation_context(uint32_t flags, const data_stack& value);
 
     /// Instructions.

@@ -820,7 +820,7 @@ static bool op_code_seperator(evaluation_context& context,
 {
     // Modify context.begin() for the next op_check_[multi_]sig_verify call.
     // Increment the iterator to skip past this op.
-    context.reset(op + 1);
+    context.reset(op /* + 1 */);
     return true;
 }
 
@@ -1078,25 +1078,24 @@ bool interpreter::run(const transaction& tx, uint32_t input_index,
     if (!context.initialize(script))
         return false;
 
-    // If any op returns false the execution terminates and is false.
     for (auto op = context.begin(); op != context.end(); ++op)
     {
-        if(!operation::is_oversized(*op))
+        if (operation::is_oversized(*op) || operation::is_disabled(*op))
             return false;
 
-        // Disabled codes handled here.
-        if (operation::is_disabled(*op) || !context.update_op_count(*op))
+        if (!context.update_op_count(*op))
             return false;
 
-        // This is why disabled and reserved codes must be allowed.
+        // Reserved codes may be skipped (allowed) so can't handle prior.
+        // Disabled codes can't be skipped so they must be handled prior.
         if (context.is_short_circuited(*op))
             continue;
 
-        // Reserved codes handled here.
         if (!run_op(op, tx, input_index, script, context))
             return false;
 
-        return !context.is_stack_overflow();
+        if (context.is_stack_overflow())
+            return false;
     }
 
     // Confirm that scopes are paired.
