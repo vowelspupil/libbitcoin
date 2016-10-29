@@ -566,6 +566,9 @@
     <ClCompile Include="..\..\..\..\src\chain\script\conditional_stack.cpp">
       <Filter>src\chain\script</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\src\chain\script\operation_iterator.cpp">
+      <Filter>src\chain\script</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\resource.h">

@@ -28,6 +28,7 @@
 #include <bitcoin/bitcoin/chain/script/interpreter.hpp>
 #include <bitcoin/bitcoin/chain/script/opcode.hpp>
 #include <bitcoin/bitcoin/chain/script/operation.hpp>
+#include <bitcoin/bitcoin/chain/script/operation_iterator.hpp>
 #include <bitcoin/bitcoin/chain/script/rule_fork.hpp>
 #include <bitcoin/bitcoin/chain/script/script_pattern.hpp>
 #include <bitcoin/bitcoin/chain/script/sighash_algorithm.hpp>
@@ -59,6 +60,9 @@ static const auto one_hash = hash_literal(
 // This is policy, not consensus.
 const size_t script::max_null_data_size = 80;
 
+// Fixed tuning parameter.
+static constexpr size_t data_capactity = 100;
+
 // Constructors.
 //-----------------------------------------------------------------------------
 
@@ -66,6 +70,7 @@ const size_t script::max_null_data_size = 80;
 script::script()
   : valid_(false)
 {
+    bytes_.reserve(data_capactity);
 }
 
 script::script(script&& other)
@@ -190,38 +195,19 @@ bool script::from_string(const std::string& mnemonic)
     valid_ = true;
 
     const auto tokens = split(mnemonic);
+    bytes_.reserve(tokens.size() + data_capactity);
 
-    for (auto token = tokens.begin(); token != tokens.end(); ++token)
+    for (const auto& token: tokens)
     {
         operation op;
-
-        // The data braces are not part of individual operation encoding.
-        if (*token == "[")
-        {
-            data_chunk data;
-            if (!decode_base16(data, *++token))
-                break;
-
-            if (data.empty() || *++token != "]")
-                break;
-
-            // Create push-data code.
-            op.from_data(data);
-        }
-        else
-        {
-            // Create non-data code.
-            op.from_string(*token);
-        }
-
-        if (!op.is_valid())
+        if (!op.from_string(token))
         {
             valid_ = false;
             break;
         }
 
-        // Store the opcode and any data.
-        bytes_.emplace_back(std::move(op));
+        const auto bytes = op.to_data();
+        bytes_.insert(bytes_.end(), bytes.begin(), bytes.end());
     }
 
     if (!valid_)
@@ -259,18 +245,32 @@ void script::to_data(writer& sink, bool prefix) const
 
 std::string script::to_string(uint32_t active_forks) const
 {
+    operation op;
+    auto first = true;
     std::ostringstream text;
+    data_source istream(bytes_);
+    istream_reader source(istream);
 
-    // TODO: create a stream and walk the operation parser over the bytes.
-    ////for (auto it = bytes_.begin(); it != bytes_.end(); ++it)
-    ////{
-    ////    if (it != bytes_.begin())
-    ////        text << " ";
-
-    ////    text << opcode_to_string(*it, active_forks);
-    ////}
+    while (op.from_data(source))
+    {
+        text << (first ? "" : " ") << op.to_string(active_forks);
+        first = false;
+    }
 
     return text.str();
+}
+
+// Iteration.
+//-----------------------------------------------------------------------------
+
+operation_iterator script::begin() const
+{
+    return operation_iterator(bytes_);
+}
+
+operation_iterator script::end() const
+{
+    return operation_iterator(bytes_, true);
 }
 
 // Properties (size, accessors, cache).

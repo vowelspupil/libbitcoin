@@ -20,7 +20,7 @@
 #include <bitcoin/bitcoin/chain/script/operation.hpp>
 
 #include <algorithm>
-#include <sstream>
+#include <boost/algorithm/string.hpp>
 #include <bitcoin/bitcoin/chain/script/rule_fork.hpp>
 #include <bitcoin/bitcoin/chain/script/opcode.hpp>
 #include <bitcoin/bitcoin/chain/script/script.hpp>
@@ -32,6 +32,7 @@
 #include <bitcoin/bitcoin/utility/container_source.hpp>
 #include <bitcoin/bitcoin/utility/istream_reader.hpp>
 #include <bitcoin/bitcoin/utility/ostream_writer.hpp>
+#include <bitcoin/bitcoin/utility/string.hpp>
 
 namespace libbitcoin {
 namespace chain {
@@ -54,15 +55,14 @@ operation::operation(const operation& other)
 {
 }
 
-// TODO: compute minimal code and set valid.
 operation::operation(data_chunk&& data)
-  : code_(opcode::push_size_0), data_(std::move(data)), valid_(true)
+  : code_(opcode_from_size(data.size())), data_(std::move(data)),
+    valid_(!is_oversized())
 {
 }
 
-// TODO: compute minimal code and set valid.
 operation::operation(const data_chunk& data)
-  : code_(opcode::push_size_0), data_(data), valid_(true)
+  : code_(opcode_from_size(data.size())), data_(data), valid_(!is_oversized())
 {
 }
 
@@ -85,6 +85,7 @@ operation& operation::operator=(operation&& other)
 {
     code_ = other.code_;
     data_ = std::move(other.data_);
+    valid_ = other.valid_;
     return *this;
 }
 
@@ -92,6 +93,7 @@ operation& operation::operator=(const operation& other)
 {
     code_ = other.code_;
     data_ = other.data_;
+    valid_ = other.valid_;
     return *this;
 }
 
@@ -132,11 +134,6 @@ operation operation::factory_from_data(reader& source)
     return instance;
 }
 
-bool operation::is_valid() const
-{
-    return valid_ || code_ != opcode::push_size_0 || !data_.empty();
-}
-
 bool operation::from_data(const data_chunk& data)
 {
     data_source istream(data);
@@ -149,7 +146,7 @@ bool operation::from_data(std::istream& stream)
     return from_data(source);
 }
 
-// This rejects invalid operations (always strict).
+// The iterator requires that the opcode read is the opcode written.
 bool operation::from_data(reader& source)
 {
     reset();
@@ -161,26 +158,19 @@ bool operation::from_data(reader& source)
 
     if (size != 0)
     {
-        // This cannot fail because size is uint32_t.
         code_ = opcode_from_size(size);
         data_ = source.read_bytes(size);
     }
 
-    if (!source)
-        reset();
-
-    return source;
-}
-
-bool operation::from_string(const std::string& token)
-{
-    reset();
-    valid_ = true;
-
-    if (!opcode_from_string(code_, token))
+    if (!source || data_.size() != size)
         reset();
 
     return valid_;
+}
+
+bool operation::is_valid() const
+{
+    return valid_ || code_ != opcode::push_size_0 || !data_.empty();
 }
 
 // protected
@@ -189,6 +179,38 @@ void operation::reset()
     code_ = opcode::push_size_0;
     data_.clear();
     valid_ = false;
+}
+
+static bool is_push_token(const std::string& token)
+{
+    return token.size() > 1 && token.front() == '[' && token.back() == ']';
+}
+
+static std::string trim_push(const std::string& token)
+{
+    std::string token(token.begin() + 1, token.end() - 1);
+    boost::trim(token);
+    return token;
+}
+
+bool operation::from_string(const std::string& mnemonic)
+{
+    reset();
+    valid_ = true;
+
+    if (is_push_token(mnemonic) && decode_base16(data_, trim_push(mnemonic)))
+    {
+        if (is_oversized())
+            reset();
+        else
+            code_ = opcode_from_size(data_.size());
+    }
+    else if (!opcode_from_string(code_, mnemonic))
+    {
+        reset();
+    }
+
+    return valid_;
 }
 
 // Serialization.
@@ -212,47 +234,35 @@ void operation::to_data(std::ostream& stream) const
 
 void operation::to_data(writer& sink) const
 {
+    static constexpr auto op_75 = static_cast<uint8_t>(opcode::push_size_75);
+
     const auto size = data_.size();
-    const auto code = opcode_byte();
+    const auto code = static_cast<uint8_t>(code_);
+    sink.write_byte(code);
 
     switch (code_)
     {
-        case opcode::special:
-            // For 0 through 75 the wire opcode is also the data size.
-            sink.write_byte(code);
-            sink.write_bytes(data_);
+        case opcode::push_one_size:
+            sink.write_byte(static_cast<uint8_t>(size));
             break;
-        case opcode::push_size_1:
-            sink.write_byte(code);
-            sink.write_byte(safe_unsigned<uint8_t>(size));
-            sink.write_bytes(data_);
+        case opcode::push_two_size:
+            sink.write_2_bytes_little_endian(static_cast<uint16_t>(size));
             break;
-        case opcode::push_size_2:
-            sink.write_byte(code);
-            sink.write_2_bytes_little_endian(safe_unsigned<uint16_t>(size));
-            sink.write_bytes(data_);
-            break;
-        case opcode::push_size_4:
-            sink.write_byte(code);
-            sink.write_4_bytes_little_endian(safe_unsigned<uint32_t>(size));
-            sink.write_bytes(data_);
+        case opcode::push_four_size:
+            sink.write_4_bytes_little_endian(static_cast<uint32_t>(size));
             break;
         default:
-            sink.write_byte(code);
             break;
     }
+
+    sink.write_bytes(data_);
 }
 
 std::string operation::to_string(uint32_t active_forks) const
 {
-    std::ostringstream text;
-
-    if (data_.empty())
-        text << opcode_to_string(code_, active_forks);
-    else
-        text << "[ " << encode_base16(data_) << " ]";
-
-    return text.str();
+    // TODO: eliminate whitespace inside of braces.
+    return data_.empty() ? opcode_to_string(code_, active_forks) :
+        "[ " + encode_base16(data_) + " ]";
 }
 
 // Properties (size, accessors, cache).
@@ -260,18 +270,19 @@ std::string operation::to_string(uint32_t active_forks) const
 
 uint64_t operation::serialized_size() const
 {
+    const auto size = sizeof(uint8_t) + data_.size();
+
     switch (code_)
     {
-        case opcode::special:
-            return sizeof(uint8_t) + data_.size();
-        case opcode::push_size_1:
-            return sizeof(uint8_t) + sizeof(uint8_t) + data_.size();
-        case opcode::push_size_2:
-            return sizeof(uint8_t) + sizeof(uint16_t) + data_.size();
-        case opcode::push_size_4:
-            return sizeof(uint8_t) + sizeof(uint32_t) + data_.size();
+        case opcode::push_one_size:
+            return sizeof(uint8_t) + size;
+        case opcode::push_two_size:
+            return sizeof(uint16_t) + size;
+        case opcode::push_four_size:
+            return sizeof(uint32_t) + size;
         default:
-            return sizeof(uint8_t);
+            return size;
+
     }
 }
 
@@ -307,98 +318,70 @@ void operation::set_data(const data_chunk& data)
 // private
 uint32_t operation::read_data_size(uint8_t byte, reader& source)
 {
-    static constexpr auto pushdata1 = static_cast<uint8_t>(opcode::push_size_1);
+    static constexpr auto op_75 = static_cast<uint8_t>(opcode::push_size_75);
 
     switch (static_cast<opcode>(byte))
     {
-        case opcode::push_size_1:
+        case opcode::push_one_size:
             return source.read_byte();
-        case opcode::push_size_2:
+        case opcode::push_two_size:
             return source.read_2_bytes_little_endian();
-        case opcode::push_size_4:
+        case opcode::push_four_size:
             return source.read_4_bytes_little_endian();
         default:
-            // For 0 through 75 the wire opcode is also the data size.
-            return byte < pushdata1 ? byte : 0;
+            return byte <= op_75 ? byte : 0;
     }
 }
 
 opcode operation::opcode_from_size(size_t size)
 {
-    static constexpr auto pushdata1 = static_cast<uint8_t>(opcode::push_size_1);
+    BITCOIN_ASSERT(size <= max_uint32);
+    static constexpr auto op_75 = static_cast<uint8_t>(opcode::push_size_75);
 
-    // For 0 through 75 the wire opcode is also the data size.
-    if (size < pushdata1)
-        return opcode::special;
-
-    if (size <= max_uint8)
-        return opcode::push_size_1;
-
-    if (size <= max_uint16)
-        return opcode::push_size_2;
-
-    if (size <= max_uint32)
-        return opcode::push_size_4;
-
-    return opcode::bad_operation;
+    if (size <= op_75)
+        return static_cast<opcode>(size);
+    else if (size <= max_uint8)
+        return opcode::push_one_size;
+    else if(size <= max_uint16)
+        return opcode::push_two_size;
+    else
+        return opcode::push_four_size;
 }
 
-// Determine if code pushes data onto the stack.
+uint8_t operation::opcode_to_positive(opcode code)
+{
+    BITCOIN_ASSERT(is_positive(code));
+    static constexpr auto op_81 = static_cast<uint8_t>(opcode::push_positive_1);
+
+    return static_cast<uint8_t>(code)-op_81 - 1;
+}
+
 bool operation::is_push(opcode code)
 {
-    switch (code)
-    {
-        case opcode::push_size_0:
-        case opcode::push_size_1:
-        case opcode::push_size_2:
-        case opcode::push_size_4:
-        case opcode::push_negative_1:
-            return true;
-
-        default:
-            return is_positive(code);
-    }
-}
-
-// Operation counter increments for all codes above op_positive_16.
-bool operation::is_counted(opcode code)
-{
-    static constexpr auto low = static_cast<uint8_t>(opcode::nop);
-    static constexpr auto high = static_cast<uint8_t>(opcode::nop10);
+    static constexpr auto op_80 = static_cast<uint8_t>(opcode::reserved_80);
+    static constexpr auto op_96 = static_cast<uint8_t>(opcode::push_positive_16);
 
     const auto value = static_cast<uint8_t>(code);
-    return value >= low && value <= high;
+    return value <= op_96 && value != op_80;
 }
 
-// Determine if code pushes a positive number [1..16] onto the stack.
+bool operation::is_counted(opcode code)
+{
+    static constexpr auto op_97 = static_cast<uint8_t>(opcode::nop);
+
+    const auto value = static_cast<uint8_t>(code);
+    return value >= op_97;
+}
+
 bool operation::is_positive(opcode code)
 {
-    switch (code)
-    {
-        case opcode::push_positive_1:
-        case opcode::push_positive_2:
-        case opcode::push_positive_3:
-        case opcode::push_positive_4:
-        case opcode::push_positive_5:
-        case opcode::push_positive_6:
-        case opcode::push_positive_7:
-        case opcode::push_positive_8:
-        case opcode::push_positive_9:
-        case opcode::push_positive_10:
-        case opcode::push_positive_11:
-        case opcode::push_positive_12:
-        case opcode::push_positive_13:
-        case opcode::push_positive_14:
-        case opcode::push_positive_15:
-        case opcode::push_positive_16:
-            return true;
+    static constexpr auto op_81 = static_cast<uint8_t>(opcode::push_positive_1);
+    static constexpr auto op_96 = static_cast<uint8_t>(opcode::push_positive_16);
 
-        default:
-            return false;
-    }
+    const auto value = static_cast<uint8_t>(code);
+    return value >= op_81 && value <= op_96;
 }
 
-// Determine if code is a conditional operator.
 bool operation::is_conditional(opcode code)
 {
     switch (code)
@@ -408,15 +391,11 @@ bool operation::is_conditional(opcode code)
         case opcode::else_:
         case opcode::endif:
             return true;
-
         default:
             return false;
     }
 }
 
-// These codes are parsed and contribute to op count.
-// If they are encountered in execution they cause failure.
-// These can not be skipped due to conditional execution so they always fail.
 bool operation::is_disabled(opcode code)
 {
     switch (code)
@@ -437,18 +416,9 @@ bool operation::is_disabled(opcode code)
         case opcode::disabled_lshift:
         case opcode::disabled_rshift:
             return true;
-
         default:
             return false;
     }
-}
-
-// Return the op_positive_# index (i.e. value of #).
-uint8_t operation::opcode_to_positive(opcode code)
-{
-    BITCOIN_ASSERT(is_positive(code));
-    static constexpr auto op_0 = static_cast<uint8_t>(opcode::push_positive_1) - 1;
-    return static_cast<uint8_t>(code) - op_0;
 }
 
 // Utilities: pattern templates.
@@ -494,10 +464,10 @@ operation::stack operation::to_pay_multisig_pattern(uint8_t signatures,
 operation::stack operation::to_pay_multisig_pattern(uint8_t signatures,
     const data_stack& points)
 {
-    static constexpr size_t op_1 = static_cast<uint8_t>(opcode::push_positive_1);
-    static constexpr size_t op_16 = static_cast<uint8_t>(opcode::push_positive_16);
-    static constexpr size_t zero = op_1 - 1;
-    static constexpr size_t max = op_16 - zero;
+    static constexpr auto op_81 = static_cast<uint8_t>(opcode::push_positive_1);
+    static constexpr auto op_96 = static_cast<uint8_t>(opcode::push_positive_16);
+    static constexpr auto zero = op_81 - 1;
+    static constexpr auto max = op_96 - zero;
 
     const auto m = signatures;
     const auto n = points.size();
@@ -556,13 +526,7 @@ bool operation::is_disabled() const
 
 bool operation::is_oversized() const
 {
-    return data_.size() > max_data_script_size;
-}
-
-uint8_t operation::opcode_byte() const
-{
-    // The code has already been computed.
-    return static_cast<uint8_t>(code_);
+    return data_.size() > max_push_data_size;
 }
 
 } // namespace chain

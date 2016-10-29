@@ -67,6 +67,8 @@ protected:
     void decrement();
 
 private:
+    uint8_t current() const;
+
     const point& point_;
     uint8_t offset_;
 };

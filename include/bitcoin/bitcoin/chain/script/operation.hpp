@@ -25,6 +25,7 @@
 #include <iostream>
 #include <vector>
 #include <bitcoin/bitcoin/chain/script/opcode.hpp>
+#include <bitcoin/bitcoin/chain/script/operation_iterator.hpp>
 #include <bitcoin/bitcoin/chain/script/script_pattern.hpp>
 #include <bitcoin/bitcoin/define.hpp>
 #include <bitcoin/bitcoin/math/elliptic_curve.hpp>
@@ -72,18 +73,24 @@ public:
     bool from_data(std::istream& stream);
     bool from_data(reader& source);
 
-    bool from_string(const std::string& token);
+    bool from_string(const std::string& mnemonic);
 
     bool is_valid() const;
 
     // Serialization.
     //-------------------------------------------------------------------------
 
-    data_chunk to_data() const;
     void to_data(std::ostream& stream) const;
     void to_data(writer& sink) const;
+    data_chunk to_data() const;
 
     std::string to_string(uint32_t active_forks) const;
+
+    // Iteration.
+    //-------------------------------------------------------------------------
+
+    operation_iterator begin() const;
+    operation_iterator end() const;
 
     // Properties (size, accessors, cache).
     //-------------------------------------------------------------------------
@@ -106,7 +113,7 @@ public:
     // Utilities.
     //-------------------------------------------------------------------------
 
-    // Compute the minimal code for the data based on its size.
+    /// Compute the minimal data opcode for a given size.
     static opcode opcode_from_size(size_t size);
 
     /// Convert the opcode to a number (or max_uint8 if not nonnegative number).
@@ -132,7 +139,6 @@ public:
 
     bool is_disabled() const;
     bool is_oversized() const;
-    uint8_t opcode_byte() const;
 
 protected:
     operation(opcode code, data_chunk&& data, bool valid);

@@ -17,36 +17,39 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef LIBBITCOIN_CHAIN_POINT_ITERATOR_HPP
-#define LIBBITCOIN_CHAIN_POINT_ITERATOR_HPP
+#ifndef LIBBITCOIN_CHAIN_OPERATION_ITERATOR_HPP
+#define LIBBITCOIN_CHAIN_OPERATION_ITERATOR_HPP
 
 #include <cstddef>
-#include <cstdint>
 #include <iterator>
+#include <memory>
 #include <bitcoin/bitcoin/define.hpp>
+#include <bitcoin/bitcoin/utility/container_source.hpp>
+#include <bitcoin/bitcoin/utility/data.hpp>
+#include <bitcoin/bitcoin/utility/istream_reader.hpp>
 
 namespace libbitcoin {
 namespace chain {
 
-class point;
+class operation;
 
-class BC_API point_iterator
+class BC_API operation_iterator
 {
 public:
-    typedef uint8_t pointer;
-    typedef uint8_t reference;
-    typedef uint8_t value_type;
+    typedef operation pointer;
+    typedef operation reference;
+    typedef operation value_type;
     typedef ptrdiff_t difference_type;
-    typedef std::bidirectional_iterator_tag iterator_category;
+    typedef std::forward_iterator_tag iterator_category;
 
-    typedef point_iterator iterator;
-    typedef point_iterator const_iterator;
+    typedef operation_iterator iterator;
+    typedef operation_iterator const_iterator;
 
     // constructors
-    point_iterator(const point& value);
-    point_iterator(const point& value, bool end);
-    point_iterator(const point& value, uint8_t offset);
-    point_iterator(const point_iterator& other);
+    operation_iterator(const data_chunk& value);
+    operation_iterator(const data_chunk& value, bool end);
+    operation_iterator(const data_chunk& value, size_t offset);
+    operation_iterator(const operation_iterator& other);
 
     operator bool() const;
 
@@ -59,16 +62,18 @@ public:
 
     iterator& operator++();
     iterator operator++(int);
-    iterator& operator--();
-    iterator operator--(int);
 
 protected:
     void increment();
-    void decrement();
 
 private:
-    const point& point_;
-    uint8_t offset_;
+    const data_chunk& bytes_;
+    data_source stream_;
+    istream_reader source_;
+    size_t offset_;
+
+    // Pointer breaks declaration cycle.
+    std::shared_ptr<value_type> current_;
 };
 
 } // namespace chain

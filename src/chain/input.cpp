@@ -137,12 +137,7 @@ bool input::from_data(reader& source, bool)
     if (!previous_output_.from_data(source))
         return false;
 
-    // Parse the coinbase tx as raw data.
-    // Always parse non-coinbase input/output scripts as fallback.
-    const auto parse_mode = previous_output_.is_null() ?
-        script::parse_mode::raw_data : script::parse_mode::raw_data_fallback;
-
-    script_.from_data(source, use_length_prefix, parse_mode);
+    script_.from_data(source, use_length_prefix);
     sequence_ = source.read_4_bytes_little_endian();
 
     if (!source)

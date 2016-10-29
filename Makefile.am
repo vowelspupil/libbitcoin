@@ -51,6 +51,7 @@ src_libbitcoin_la_SOURCES = \
     src/chain/script/interpreter.cpp \
     src/chain/script/opcode.cpp \
     src/chain/script/operation.cpp \
+    src/chain/script/operation_iterator.cpp \
     src/chain/script/script.cpp \
     src/config/authority.cpp \
     src/config/base16.cpp \

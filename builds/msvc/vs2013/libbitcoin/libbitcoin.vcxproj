@@ -82,6 +82,7 @@
     <ClCompile Include="..\..\..\..\src\chain\script\interpreter.cpp" />
     <ClCompile Include="..\..\..\..\src\chain\script\opcode.cpp" />
     <ClCompile Include="..\..\..\..\src\chain\script\operation.cpp" />
+    <ClCompile Include="..\..\..\..\src\chain\script\operation_iterator.cpp" />
     <ClCompile Include="..\..\..\..\src\chain\script\script.cpp" />
     <ClCompile Include="..\..\..\..\src\chain\transaction.cpp" />
     <ClCompile Include="..\..\..\..\src\chain\input.cpp" />

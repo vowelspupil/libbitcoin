@@ -18,13 +18,15 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 #include <bitcoin/bitcoin/chain/point_iterator.hpp>
+
+#include <bitcoin/bitcoin/constants.hpp>
 #include <bitcoin/bitcoin/chain/point.hpp>
 #include <bitcoin/bitcoin/utility/endian.hpp>
 
 namespace libbitcoin {
 namespace chain {
 
-static BC_CONSTEXPR uint8_t max_offset = hash_size + sizeof(uint32_t);
+static constexpr uint8_t max_offset = hash_size + sizeof(uint32_t);
 
 point_iterator::point_iterator(const point& value)
   : point_(value), offset_(0)
@@ -51,33 +53,33 @@ point_iterator::operator bool() const
     return (offset_ < max_offset);
 }
 
-point_iterator::reference point_iterator::operator*() const
+// private
+uint8_t point_iterator::current() const
 {
     if (offset_ < hash_size)
         return point_.hash()[offset_];
 
-    // TODO: optimize by indexing directly into point_.index bytes.
-    if (offset_ - hash_size < sizeof(uint32_t))
-        return to_little_endian(point_.index())[offset_ - hash_size];
+    const auto position = offset_ - hash_size;
 
-    return 0;
+    // TODO: move little-endian indexer into endian.hpp.
+    return position >= sizeof(uint32_t) ? 0 :
+        static_cast<uint8_t>(point_.index() >> (position * byte_bits));
+}
+
+point_iterator::reference point_iterator::operator*() const
+{
+    return current();
 }
 
 point_iterator::pointer point_iterator::operator->() const
 {
-    if (offset_ < hash_size)
-        return point_.hash()[offset_];
-
-    // TODO: optimize by indexing directly into point_.index bytes.
-    if (offset_ - hash_size < sizeof(uint32_t))
-        return to_little_endian(point_.index())[offset_ - hash_size];
-
-    return 0;
+    return current();
 }
 
 bool point_iterator::operator==(const iterator& other) const
 {
-    return (point_ == other.point_) && (offset_ == other.offset_);
+    // Use only offset for end comparison (optimization).
+    return /*(point_ == other.point_) &&*/ (offset_ == other.offset_);
 }
 
 bool point_iterator::operator!=(const iterator& other) const

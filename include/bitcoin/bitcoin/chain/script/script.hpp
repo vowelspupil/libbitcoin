@@ -28,6 +28,7 @@
 #include <bitcoin/bitcoin/error.hpp>
 #include <bitcoin/bitcoin/chain/script/evaluation_context.hpp>
 #include <bitcoin/bitcoin/chain/script/operation.hpp>
+#include <bitcoin/bitcoin/chain/script/operation_iterator.hpp>
 #include <bitcoin/bitcoin/chain/script/rule_fork.hpp>
 #include <bitcoin/bitcoin/chain/script/script_pattern.hpp>
 #include <bitcoin/bitcoin/math/elliptic_curve.hpp>
@@ -86,6 +87,12 @@ public:
     void to_data(writer& sink, bool prefix) const;
 
     std::string to_string(uint32_t active_forks) const;
+
+    // Iteration.
+    //-------------------------------------------------------------------------
+
+    operation_iterator begin() const;
+    operation_iterator end() const;
 
     // Properties (size, accessors, cache).
     //-------------------------------------------------------------------------
