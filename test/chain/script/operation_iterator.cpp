@@ -24,32 +24,32 @@ using namespace bc;
 using namespace bc::chain;
 
 #define SOURCE "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f00000015"
-static const auto valid_raw_point_iterator_source = to_chunk(base16_literal(SOURCE));
+static const auto valid_raw_operation_iterator_source = to_chunk(base16_literal(SOURCE));
 
-BOOST_AUTO_TEST_SUITE(point_iterator_tests)
+BOOST_AUTO_TEST_SUITE(operation_iterator_tests)
 
-BOOST_AUTO_TEST_CASE(point_iterator__operator_bool__not_at_end__returns_true)
+BOOST_AUTO_TEST_CASE(operation_iterator__operator_bool__not_at_end__returns_true)
 {
-    point_iterator instance(point{});
+    operation_iterator instance(operation{});
     BOOST_REQUIRE((bool)instance);
 }
 
-BOOST_AUTO_TEST_CASE(point_iterator__operator_bool_at_end__returns_false)
+BOOST_AUTO_TEST_CASE(operation_iterator__operator_bool_at_end__returns_false)
 {
-    point_iterator instance(point{}, true);
+    operation_iterator instance(operation{}, true);
     BOOST_REQUIRE(!(bool)instance);
 }
 
-BOOST_AUTO_TEST_CASE(point_iterator__operator_asterisk__initialized_point__matches_source)
+BOOST_AUTO_TEST_CASE(operation_iterator__operator_asterisk__initialized_op__matches_source)
 {
-    point point;
-    BOOST_REQUIRE(point.from_data(valid_raw_point_iterator_source));
-    point_iterator instance(point);
+    operation op;
+    BOOST_REQUIRE(op.from_data(valid_raw_operation_iterator_source));
+    operation_iterator instance(op);
 
-    for (size_t i = 0; i < valid_raw_point_iterator_source.size(); i++)
+    for (size_t i = 0; i < valid_raw_operation_iterator_source.size(); i++)
     {
         BOOST_REQUIRE((bool)instance);
-        BOOST_REQUIRE_EQUAL(valid_raw_point_iterator_source[i], (*instance));
+        BOOST_REQUIRE_EQUAL(valid_raw_operation_iterator_source[i], (*instance));
         instance++;
     }
 
@@ -57,17 +57,17 @@ BOOST_AUTO_TEST_CASE(point_iterator__operator_asterisk__initialized_point__match
     BOOST_REQUIRE_EQUAL(0u, (*instance));
 }
 
-BOOST_AUTO_TEST_CASE(point_iterator__operator_arrow__initialized_point__matches_source)
+BOOST_AUTO_TEST_CASE(operation_iterator__operator_arrow__initialized_op__matches_source)
 {
-    point point;
-    BOOST_REQUIRE(point.from_data(valid_raw_point_iterator_source));
-    point_iterator instance(point);
-    BOOST_REQUIRE(valid_raw_point_iterator_source.size() > 0);
+    operation op;
+    BOOST_REQUIRE(op.from_data(valid_raw_operation_iterator_source));
+    operation_iterator instance(op);
+    BOOST_REQUIRE(valid_raw_operation_iterator_source.size() > 0);
 
-    for (size_t i = 0; i < valid_raw_point_iterator_source.size(); i++)
+    for (size_t i = 0; i < valid_raw_operation_iterator_source.size(); i++)
     {
         BOOST_REQUIRE((bool)instance);
-        BOOST_REQUIRE_EQUAL(valid_raw_point_iterator_source[i], instance.operator->());
+        BOOST_REQUIRE_EQUAL(valid_raw_operation_iterator_source[i], instance.operator->());
         instance++;
     }
 
@@ -75,14 +75,14 @@ BOOST_AUTO_TEST_CASE(point_iterator__operator_arrow__initialized_point__matches_
     BOOST_REQUIRE_EQUAL(0u, instance.operator->());
 }
 
-BOOST_AUTO_TEST_CASE(point_iterator__operator_plus_minus_int__roundtrip__success)
+BOOST_AUTO_TEST_CASE(operation_iterator__operator_plus_minus_int__roundtrip__success)
 {
-    point point;
+    operation op;
     uint8_t offset = 5u;
-    BOOST_REQUIRE(point.from_data(valid_raw_point_iterator_source));
+    BOOST_REQUIRE(op.from_data(valid_raw_operation_iterator_source));
 
-    point_iterator instance(point, offset);
-    point_iterator expected(instance);
+    operation_iterator instance(op, offset);
+    operation_iterator expected(instance);
 
     auto initial = instance++;
     BOOST_REQUIRE(instance != expected);
@@ -93,14 +93,14 @@ BOOST_AUTO_TEST_CASE(point_iterator__operator_plus_minus_int__roundtrip__success
     BOOST_REQUIRE(modified != expected);
 }
 
-BOOST_AUTO_TEST_CASE(point_iterator__operator_plus_minus__roundtrip__success)
+BOOST_AUTO_TEST_CASE(operation_iterator__operator_plus_minus__roundtrip__success)
 {
-    point point;
+    operation op;
     uint8_t offset = 5u;
-    BOOST_REQUIRE(point.from_data(valid_raw_point_iterator_source));
+    BOOST_REQUIRE(op.from_data(valid_raw_operation_iterator_source));
 
-    point_iterator instance(point, offset);
-    point_iterator expected(instance);
+    operation_iterator instance(op, offset);
+    operation_iterator expected(instance);
 
     ++instance;
     BOOST_REQUIRE(instance != expected);

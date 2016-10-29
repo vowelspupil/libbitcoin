@@ -40,8 +40,6 @@ class BC_API operation
 public:
     typedef std::vector<operation> stack;
 
-    static const size_t max_null_data_size;
-
     // Constructors.
     //-------------------------------------------------------------------------
 
@@ -50,8 +48,9 @@ public:
     operation(operation&& other);
     operation(const operation& other);
 
-    operation(opcode code, data_chunk&& data);
-    operation(opcode code, const data_chunk& data);
+    // TODO: just use from_data?
+    operation(data_chunk&& data);
+    operation(const data_chunk& data);
 
     // Operators.
     //-------------------------------------------------------------------------
@@ -73,6 +72,8 @@ public:
     bool from_data(std::istream& stream);
     bool from_data(reader& source);
 
+    bool from_string(const std::string& token);
+
     bool is_valid() const;
 
     // Serialization.
@@ -82,69 +83,61 @@ public:
     void to_data(std::ostream& stream) const;
     void to_data(writer& sink) const;
 
-    std::string to_string(uint32_t flags) const;
+    std::string to_string(uint32_t active_forks) const;
 
     // Properties (size, accessors, cache).
     //-------------------------------------------------------------------------
 
     uint64_t serialized_size() const;
 
+    /// Get the op code [0..255], if is_valid is consistent with data.
     opcode code() const;
+
+    /// This should not be used to set a data code (as it will set invalid).
     void set_code(opcode code);
 
-    // deprecated (unsafe)
-    data_chunk& data();
-
+    /// Get the data, empty if not a push code or if invalid.
     const data_chunk& data() const;
+
+    /// These select the minimal code for the data (sets invalid on overflow).
     void set_data(data_chunk&& data);
     void set_data(const data_chunk& data);
 
     // Utilities.
     //-------------------------------------------------------------------------
 
-    static bool is_disabled(const operation& op);
-    static bool is_oversized(const operation& op);
-    static uint8_t opcode_to_positive(opcode code);
-    static uint8_t opcode_to_byte(const operation& op);
+    // Compute the minimal code for the data based on its size.
     static opcode opcode_from_size(size_t size);
 
+    /// Convert the opcode to a number (or max_uint8 if not nonnegative number).
+    static uint8_t opcode_to_positive(opcode code);
+
     /// Types of opcodes.
-    static bool is_wire(opcode code);
-    static bool is_wire_special(opcode code);
     static bool is_push(opcode code);
     static bool is_counted(opcode code);
     static bool is_positive(opcode code);
     static bool is_disabled(opcode code);
-    static bool is_reserved(opcode code);
     static bool is_conditional(opcode code);
-    static bool is_push_only(const operation::stack& operations);
-
-    /// unspendable pattern (standard)
-    static bool is_null_data_pattern(const operation::stack& ops);
-
-    /// payment script patterns (standard)
-    static bool is_pay_multisig_pattern(const operation::stack& ops);
-    static bool is_pay_public_key_pattern(const operation::stack& ops);
-    static bool is_pay_key_hash_pattern(const operation::stack& ops);
-    static bool is_pay_script_hash_pattern(const operation::stack& ops);
-
-    /// signature script patterns (standard)
-    static bool is_sign_multisig_pattern(const operation::stack& ops);
-    static bool is_sign_public_key_pattern(const operation::stack& ops);
-    static bool is_sign_key_hash_pattern(const operation::stack& ops);
-    static bool is_sign_script_hash_pattern(const operation::stack& ops);
 
     /// stack factories
     static stack to_null_data_pattern(data_slice data);
-    static stack to_pay_multisig_pattern(uint8_t signatures,
-        const point_list& points);
-    static stack to_pay_multisig_pattern(uint8_t signatures,
-        const data_stack& points);
+    static stack to_pay_multisig_pattern(uint8_t signatures, const point_list& points);
+    static stack to_pay_multisig_pattern(uint8_t signatures, const data_stack& points);
     static stack to_pay_public_key_pattern(data_slice point);
     static stack to_pay_key_hash_pattern(const short_hash& hash);
     static stack to_pay_script_hash_pattern(const short_hash& hash);
 
+    // Validation.
+    //-------------------------------------------------------------------------
+
+    bool is_disabled() const;
+    bool is_oversized() const;
+    uint8_t opcode_byte() const;
+
 protected:
+    operation(opcode code, data_chunk&& data, bool valid);
+    operation(opcode code, const data_chunk& data, bool valid);
+
     void reset();
 
 private:
@@ -152,6 +145,7 @@ private:
 
     opcode code_;
     data_chunk data_;
+    bool valid_;
 };
 
 } // end chain

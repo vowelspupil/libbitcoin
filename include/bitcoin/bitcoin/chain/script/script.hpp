@@ -20,6 +20,7 @@
 #ifndef LIBBITCOIN_CHAIN_SCRIPT_HPP
 #define LIBBITCOIN_CHAIN_SCRIPT_HPP
 
+#include <cstddef>
 #include <cstdint>
 #include <istream>
 #include <string>
@@ -42,12 +43,7 @@ class BC_API transaction;
 class BC_API script
 {
 public:
-    enum class parse_mode
-    {
-        strict,
-        raw_data,
-        raw_data_fallback
-    };
+    static const size_t max_null_data_size;
 
     // Constructors.
     //-------------------------------------------------------------------------
@@ -57,8 +53,9 @@ public:
     script(script&& other);
     script(const script& other);
 
-    script(operation::stack&& operations);
-    script(const operation::stack& operations);
+    // TODO: just use from_data?
+    script(data_chunk&& bytes);
+    script(const data_chunk& bytes);
 
     // Operators.
     //-------------------------------------------------------------------------
@@ -69,15 +66,13 @@ public:
     bool operator==(const script& other) const;
     bool operator!=(const script& other) const;
 
-    static script factory_from_data(const data_chunk& data, bool prefix,
-        parse_mode mode);
-    static script factory_from_data(std::istream& stream, bool prefix,
-        parse_mode mode);
-    static script factory_from_data(reader& source, bool prefix, parse_mode mode);
+    static script factory_from_data(const data_chunk& data, bool prefix);
+    static script factory_from_data(std::istream& stream, bool prefix);
+    static script factory_from_data(reader& source, bool prefix);
 
-    bool from_data(const data_chunk& data, bool prefix, parse_mode mode);
-    bool from_data(std::istream& stream, bool prefix, parse_mode mode);
-    bool from_data(reader& source, bool prefix, parse_mode mode);
+    bool from_data(const data_chunk& data, bool prefix);
+    bool from_data(std::istream& stream, bool prefix);
+    bool from_data(reader& source, bool prefix);
 
     bool from_string(const std::string& mnemonic);
 
@@ -90,7 +85,7 @@ public:
     void to_data(std::ostream& stream, bool prefix) const;
     void to_data(writer& sink, bool prefix) const;
 
-    std::string to_string(uint32_t flags) const;
+    std::string to_string(uint32_t active_forks) const;
 
     // Properties (size, accessors, cache).
     //-------------------------------------------------------------------------
@@ -98,13 +93,10 @@ public:
     uint64_t satoshi_content_size() const;
     uint64_t serialized_size(bool prefix) const;
 
-    // deprecated (unsafe)
-    operation::stack& operations();
+    const data_chunk& bytes() const;
 
-    const operation::stack& operations() const;
-
-    void set_operations(operation::stack&& value);
-    void set_operations(const operation::stack& value);
+    void set_bytes(data_chunk&& value);
+    void set_bytes(const data_chunk& value);
 
     // Signing.
     //-------------------------------------------------------------------------
@@ -130,9 +122,6 @@ public:
     size_t sigops(bool serialized_script) const;
     size_t pay_script_hash_sigops(const script& prevout) const;
 
-    // TODO: hide this as protected after changing tests.
-    bool is_raw_data() const;
-
     // Validation.
     //-------------------------------------------------------------------------
 
@@ -145,15 +134,31 @@ public:
 protected:
     void reset();
 
+    /// Used in all signature script patterns.
+    bool is_push_only(const operation::stack& ops) const;
+
+    /// Unspendable pattern (standard).
+    bool is_null_data_pattern(const operation::stack& ops) const;
+
+    /// Payment script patterns (standard).
+    bool is_pay_multisig_pattern(const operation::stack& ops) const;
+    bool is_pay_public_key_pattern(const operation::stack& ops) const;
+    bool is_pay_key_hash_pattern(const operation::stack& ops) const;
+    bool is_pay_script_hash_pattern(const operation::stack& ops) const;
+
+    /// Signature script patterns (standard).
+    bool is_sign_multisig_pattern(const operation::stack& ops) const;
+    bool is_sign_public_key_pattern(const operation::stack& ops) const;
+    bool is_sign_key_hash_pattern(const operation::stack& ops) const;
+    bool is_sign_script_hash_pattern(const operation::stack& ops) const;
+
 private:
     static code pay_hash(const transaction& tx, uint32_t input_index,
         const script& input_script, evaluation_context& input_context);
 
-    bool emplace(data_chunk&& bytes);
-    bool parse(const data_chunk& bytes);
     bool is_pay_to_script_hash(uint32_t flags) const;
 
-    operation::stack operations_;
+    data_chunk bytes_;
     bool valid_;
 };
 

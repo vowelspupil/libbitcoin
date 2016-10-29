@@ -46,15 +46,6 @@ evaluation_context::evaluation_context(uint32_t flags)
     stack.reserve(stack_capactity);
 }
 
-////// Iterators must be set via run.
-////evaluation_context::evaluation_context(uint32_t flags, data_stack&& value)
-////  : op_count_(0), flags_(flags), condition(condition_capactity)
-////{
-////    alternate.reserve(alternate_capactity);
-////    stack.reserve(stack_capactity);
-////    stack = std::move(value);
-////}
-
 // Iterators must be set via run.
 evaluation_context::evaluation_context(uint32_t flags, const data_stack& value)
   : op_count_(0), flags_(flags), condition(condition_capactity)
@@ -141,7 +132,7 @@ data_chunk& evaluation_context::item(size_t index)
 
 data_stack::iterator evaluation_context::position(size_t index)
 {
-    // Subtracting 1 makes back-index zero-based (unlike satoshi).
+    // Subtracting 1 makes the stack indexes zero-based (unlike satoshi).
     BITCOIN_ASSERT(index < stack.size());
     return (stack.end() - 1) - index;
 }
@@ -158,12 +149,9 @@ bool evaluation_context::is_stack_overflow() const
     return stack.size() + alternate.size() > max_stack_size;
 }
 
-// This call must be guarded.
-bool evaluation_context::stack_result() const
+// private
+bool evaluation_context::stack_to_bool() const
 {
-    if (stack.empty())
-        return false;
-
     const auto& back = stack.back();
     if (back.empty())
         return false;
@@ -179,6 +167,19 @@ bool evaluation_context::stack_result() const
     }
 
     return false;
+}
+
+// This call must be guarded.
+bool evaluation_context::stack_state() const
+{
+    BITCOIN_ASSERT(!stack.empty());
+    return stack_to_bool();
+}
+
+// This call is safe.
+bool evaluation_context::stack_result() const
+{
+    return !stack.empty() && stack_to_bool();
 }
 
 /// Stack pop.
@@ -217,11 +218,11 @@ bool evaluation_context::pop_binary(number& first, number& second)
 bool evaluation_context::pop_ternary(number& first, number& second,
     number& third)
 {
-    // The upper bound is at the top of the stack and the lower bound next.
+    // The upper bound is at stack top, lower bound next, value next.
     return pop(first) && pop(second) && pop(third);
 }
 
-// Determines if the value is a valid stack index and returns the index.
+// Determines if popped value is valid post-pop stack index and returns index.
 bool evaluation_context::pop_position(data_stack::iterator& out_position)
 {
     int32_t index;

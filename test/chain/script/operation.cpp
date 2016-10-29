@@ -120,9 +120,9 @@ BOOST_AUTO_TEST_CASE(operation__from_data__roundtrip_special__success)
     BOOST_REQUIRE(data75 == instance.data());
 }
 
-BOOST_AUTO_TEST_CASE(operation__from_data__roundtrip_pushdata1__success)
+BOOST_AUTO_TEST_CASE(operation__from_data__roundtrip_push_size_1__success)
 {
-    const auto code = opcode::pushdata1;
+    const auto code = opcode::push_size_1;
     const auto data255 = data_chunk(0xff, '.');
     const auto raw_operation = build_chunk({ base16_literal("4c" "ff"), data255 });
     operation instance;
@@ -140,9 +140,9 @@ BOOST_AUTO_TEST_CASE(operation__from_data__roundtrip_pushdata1__success)
     BOOST_REQUIRE(data255 == instance.data());
 }
 
-BOOST_AUTO_TEST_CASE(operation__from_data__roundtrip_pushdata2__success)
+BOOST_AUTO_TEST_CASE(operation__from_data__roundtrip_push_size_2__success)
 {
-    const auto code = opcode::pushdata2;
+    const auto code = opcode::push_size_2;
     const auto data65535 = data_chunk(0xffff, '.');
     const auto raw_operation = build_chunk({ base16_literal("4d" "ffff"), data65535 });
     operation instance;
@@ -160,9 +160,9 @@ BOOST_AUTO_TEST_CASE(operation__from_data__roundtrip_pushdata2__success)
     BOOST_REQUIRE(data65535 == instance.data());
 }
 
-BOOST_AUTO_TEST_CASE(operation__from_data__roundtrip_pushdata4__success)
+BOOST_AUTO_TEST_CASE(operation__from_data__roundtrip_push_size_4__success)
 {
-    const auto code = opcode::pushdata4;
+    const auto code = opcode::push_size_4;
     const auto data65536 = data_chunk(0x00010000, '.');
     const auto raw_operation = build_chunk({ base16_literal("4e" "00000100"), data65536 });
     operation instance;

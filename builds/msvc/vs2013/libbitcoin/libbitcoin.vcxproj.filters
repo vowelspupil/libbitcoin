@@ -1120,6 +1120,9 @@
     <ClInclude Include="..\..\..\..\include\bitcoin\bitcoin\chain\script\script_pattern.hpp">
       <Filter>include\bitcoin\chain\script</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\include\bitcoin\bitcoin\chain\script\operation_iterator.hpp">
+      <Filter>include\bitcoin\chain\script</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\..\resource.rc">

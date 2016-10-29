@@ -43,7 +43,6 @@ public:
 
     /// Constructors.
     evaluation_context(uint32_t flags);
-    ////evaluation_context(uint32_t flags, data_stack&& value);
     evaluation_context(uint32_t flags, const data_stack& value);
 
     /// Instructions.
@@ -64,6 +63,7 @@ public:
     data_stack::iterator position(size_t index);
     bool is_short_circuited(const operation& op) const;
     bool is_stack_overflow() const;
+    bool stack_state() const;
     bool stack_result() const;
 
     /// Stack pop.
@@ -87,6 +87,8 @@ public:
     conditional_stack condition;
 
 private:
+    bool stack_to_bool() const;
+
     op_iterator begin_;
     op_iterator end_;
     size_t op_count_;
