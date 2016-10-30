@@ -768,8 +768,8 @@ static signature_parse_result op_check_multisig_verify(
     if (sigs_count < 0 || sigs_count > pubkeys_count)
         return signature_parse_result::invalid;
 
-    data_stack endorsements;
-    if (!context.pop(endorsements, sigs_count))
+    data_stack sigs;
+    if (!context.pop(sigs, sigs_count))
         return signature_parse_result::invalid;
 
     if (context.stack.empty())
@@ -779,14 +779,14 @@ static signature_parse_result op_check_multisig_verify(
     context.stack.pop_back();
     operation::stack ops;
 
-    const auto is_endorsement = [&endorsements](const data_chunk& data)
+    const auto is_endorsement = [&sigs](const data_chunk& data)
     {
-        return std::find(endorsements.begin(), endorsements.end(), data) !=
-            endorsements.end();
+        return std::find(sigs.begin(), sigs.end(), data) != sigs.end();
     };
 
     //*************************************************************************
-    // CONSENSUS: Satoshi has self-modifying code bug in FindAndDelete here.
+    // CONSENSUS: Satoshi has a bug in FindAndDelete that we do not reproduce.
+    // Its endorsement removal will strip matching operations, not just data.
     //*************************************************************************
     for (auto op = context.begin(); op != context.end(); ++op)
         if (!is_endorsement(op->data()))
@@ -799,7 +799,7 @@ static signature_parse_result op_check_multisig_verify(
     const chain::script script_code(std::move(ops));
     auto strict = script::is_enabled(context.flags(), rule_fork::bip66_rule);
 
-    for (const auto& endorsement: endorsements)
+    for (const auto& endorsement: sigs)
     {
         if (endorsement.empty())
             return signature_parse_result::invalid;

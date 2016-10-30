@@ -334,7 +334,10 @@ uint32_t operation::read_data_size(uint8_t byte, reader& source)
 
 opcode operation::opcode_from_size(size_t size)
 {
+    // Satoshi simply casts size to 4 bytes but writes size bytes.
+    // Any difference is not a potential issue, due to script size limits.
     BITCOIN_ASSERT(size <= max_uint32);
+
     static constexpr auto op_75 = static_cast<uint8_t>(opcode::push_size_75);
 
     if (size <= op_75)

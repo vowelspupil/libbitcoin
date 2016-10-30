@@ -489,10 +489,18 @@ hash_digest script::generate_signature_hash(const transaction& tx,
     if (input_index >= tx.inputs().size() || 
         (input_index >= tx.outputs().size() && single))
     {
-        // This is a wacky bitcoind behavior we necessarily perpetuate.
+        // Wacky satoshi consensus behavior we must perpetuate.
         return one_hash;
     }
 
+    // Strip code seperators.
+    // Wacky satoshi consensus behavior we must perpetuate.
+    operation::stack ops;
+    for (auto op = script_code.begin(); op != script_code.end(); ++op)
+        if (op->code() != opcode::codeseparator)
+            ops.push_back(*op);
+
+    script stripped(std::move(ops));
     switch (to_sighash_enum(sighash_type))
     {
         case sighash_none:
