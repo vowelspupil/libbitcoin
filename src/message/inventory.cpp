@@ -145,6 +145,7 @@ bool inventory::from_data(uint32_t version, reader& source)
 data_chunk inventory::to_data(uint32_t version) const
 {
     data_chunk data;
+    data.reserve(serialized_size(version));
     data_sink ostream(data);
     to_data(version, ostream);
     ostream.flush();
