@@ -29,8 +29,6 @@
 namespace libbitcoin {
 namespace chain {
 
-static constexpr auto use_length_prefix = true;
-
 // Constructors.
 //-----------------------------------------------------------------------------
 
@@ -165,6 +163,7 @@ bool input::is_valid() const
 data_chunk input::to_data(bool wire) const
 {
     data_chunk data;
+    data.reserve(serialized_size(wire));
     data_sink ostream(data);
     to_data(ostream, wire);
     ostream.flush();
@@ -181,7 +180,7 @@ void input::to_data(std::ostream& stream, bool wire) const
 void input::to_data(writer& sink, bool) const
 {
     previous_output_.to_data(sink);
-    script_.to_data(sink, use_length_prefix);
+    script_.to_data(sink, true);
     sink.write_4_bytes_little_endian(sequence_);
 }
 
@@ -202,7 +201,7 @@ std::string input::to_string(uint32_t flags) const
 uint64_t input::serialized_size(bool) const
 {
     return previous_output_.serialized_size() +
-        script_.serialized_size(use_length_prefix) + sizeof(sequence_);
+        script_.serialized_size(true) + sizeof(sequence_);
 }
 
 // Accessors.

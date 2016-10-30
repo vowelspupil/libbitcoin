@@ -267,11 +267,15 @@ bool transaction::is_valid() const
 data_chunk transaction::to_data(bool wire) const
 {
     data_chunk data;
+
+    // Reserve an extra byte to prevent full reallocation in the case of
+    // generate_signature_hash extension by addition of the sighash_type.
+    data.reserve(serialized_size(wire) + sizeof(uint8_t));
+
     data_sink ostream(data);
     to_data(ostream, wire);
     ostream.flush();
     BITCOIN_ASSERT(data.size() == serialized_size(wire));
-
     return data;
 }
 

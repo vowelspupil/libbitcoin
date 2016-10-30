@@ -136,6 +136,7 @@ bool point::from_data(reader& source)
 data_chunk point::to_data() const
 {
     data_chunk data;
+    data.reserve(serialized_size());
     data_sink ostream(data);
     to_data(ostream);
     ostream.flush();

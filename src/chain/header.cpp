@@ -211,6 +211,7 @@ bool header::is_valid() const
 data_chunk header::to_data() const
 {
     data_chunk data;
+    data.reserve(serialized_size());
     data_sink ostream(data);
     to_data(ostream);
     ostream.flush();

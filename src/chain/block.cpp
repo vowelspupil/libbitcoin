@@ -221,6 +221,7 @@ bool block::is_valid() const
 data_chunk block::to_data() const
 {
     data_chunk data;
+    data.reserve(serialized_size());
     data_sink ostream(data);
     to_data(ostream);
     ostream.flush();
