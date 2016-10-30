@@ -41,8 +41,8 @@ public:
         const script& script, evaluation_context& context);
 
 private:
-    static bool run_op(operation::stack::const_iterator op,
-        const transaction& tx, uint32_t input_index, const script& script,
+    static bool run_op(operation::const_iterator op, const transaction& tx,
+        uint32_t input_index, const script& script,
         evaluation_context& context);
 };
 

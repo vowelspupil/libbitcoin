@@ -61,7 +61,7 @@ static const auto one_hash = hash_literal(
 const size_t script::max_null_data_size = 80;
 
 // Fixed tuning parameter.
-static constexpr size_t data_capactity = 100;
+static constexpr size_t stack_capactity = 10;
 
 // Constructors.
 //-----------------------------------------------------------------------------
@@ -70,7 +70,6 @@ static constexpr size_t data_capactity = 100;
 script::script()
   : valid_(false)
 {
-    bytes_.reserve(data_capactity);
 }
 
 script::script(script&& other)
@@ -93,6 +92,16 @@ script::script(const data_chunk& bytes)
 {
 }
 
+script::script(const operation::stack& ops)
+  : bytes_(to_bytes(ops)), valid_(true)
+{
+}
+
+// TODO: create ops cache.
+script::script(operation::stack&& ops)
+  : bytes_(to_bytes(ops)), valid_(true)
+{
+}
 
 // Operators.
 //-----------------------------------------------------------------------------
@@ -176,6 +185,57 @@ bool script::from_data(reader& source, bool prefix)
     return source;
 }
 
+// There is strictly one operation per string token.
+bool script::from_string(const std::string& mnemonic)
+{
+    reset();
+
+    const auto tokens = split(mnemonic);
+    operation::stack ops;
+    ops.resize(tokens.size());
+
+    for (size_t index = 0; index < ops.size(); ++index)
+        if (!ops[index].from_string(tokens[index]))
+            return false;
+
+    return from_stack(ops);
+}
+
+// private/static
+size_t script::script_size(const operation::stack& ops)
+{
+    const auto op_size = [](size_t total, const operation& op)
+    {
+        return total + op.serialized_size();
+    };
+
+    return std::accumulate(ops.begin(), ops.end(), size_t{0}, op_size);
+}
+
+// private/static
+data_chunk script::to_bytes(const operation::stack& ops)
+{
+    const auto bytes = script_size(ops);
+
+    data_chunk script;
+    script.reserve(bytes);
+
+    for (const auto& op: ops)
+    {
+        const auto bytes = op.to_data();
+        script.insert(script.end(), bytes.begin(), bytes.end());
+    }
+
+    BITCOIN_ASSERT(bytes == script.size());
+    return script;
+}
+
+bool script::from_stack(const operation::stack& ops)
+{
+    set_bytes(to_bytes(ops));
+    return true;
+}
+
 // protected
 void script::reset()
 {
@@ -187,33 +247,6 @@ void script::reset()
 bool script::is_valid() const
 {
     return valid_ || !bytes_.empty();
-}
-
-bool script::from_string(const std::string& mnemonic)
-{
-    reset();
-    valid_ = true;
-
-    const auto tokens = split(mnemonic);
-    bytes_.reserve(tokens.size() + data_capactity);
-
-    for (const auto& token: tokens)
-    {
-        operation op;
-        if (!op.from_string(token))
-        {
-            valid_ = false;
-            break;
-        }
-
-        const auto bytes = op.to_data();
-        bytes_.insert(bytes_.end(), bytes.begin(), bytes.end());
-    }
-
-    if (!valid_)
-        reset();
-
-    return valid_;
 }
 
 // Serialization.
@@ -245,19 +278,32 @@ void script::to_data(writer& sink, bool prefix) const
 
 std::string script::to_string(uint32_t active_forks) const
 {
-    operation op;
     auto first = true;
     std::ostringstream text;
-    data_source istream(bytes_);
-    istream_reader source(istream);
 
-    while (op.from_data(source))
+    for (const auto& op: to_stack())
     {
         text << (first ? "" : " ") << op.to_string(active_forks);
         first = false;
     }
 
     return text.str();
+}
+
+operation::stack script::to_stack() const
+{
+    operation op;
+    operation::stack stack;
+    stack.reserve(stack_capactity);
+
+    data_source istream(bytes_);
+    istream_reader source(istream);
+
+    while (op.from_data(source))
+        stack.push_back(op);
+
+    stack.shrink_to_fit();
+    return stack;
 }
 
 // Iteration.
@@ -297,16 +343,16 @@ const data_chunk& script::bytes() const
     return bytes_;
 }
 
-void script::set_bytes(const data_chunk& value)
+void script::set_bytes(data_chunk&& bytes)
 {
     valid_ = true;
-    bytes_ = value;
+    bytes_ = std::move(bytes);
 }
 
-void script::set_bytes(data_chunk&& value)
+void script::set_bytes(const data_chunk& bytes)
 {
     valid_ = true;
-    bytes_ = std::move(value);
+    bytes_ = bytes;
 }
 
 // Signing.
@@ -500,14 +546,16 @@ bool script::create_endorsement(endorsement& out, const ec_secret& secret,
 // ----------------------------------------------------------------------------
 // protected
 
-bool script::is_push_only(const operation::stack& ops) const
+bool script::is_push_only() const
 {
+    const operation::stack ops;
+
     const auto push = [](const operation& op)
     {
         return operation::is_push(op.code());
     };
 
-    return std::all_of(ops.begin(), ops.end(), push);
+    return std::all_of(begin(), end(), push);
 }
 
 // TODO: is a minimal data encoding required?
@@ -582,7 +630,7 @@ bool script::is_pay_script_hash_pattern(const operation::stack& ops) const
 // TODO: is a minimal data encoding required?
 bool script::is_sign_multisig_pattern(const operation::stack& ops) const
 {
-    if (ops.size() < 2 || !is_push_only(ops))
+    if (ops.size() < 2 || !is_push_only())
         return false;
 
     if (ops.front().code() != opcode::push_size_0)
@@ -594,20 +642,20 @@ bool script::is_sign_multisig_pattern(const operation::stack& ops) const
 // TODO: is a minimal data encoding required?
 bool script::is_sign_public_key_pattern(const operation::stack& ops) const
 {
-    return ops.size() == 1 && is_push_only(ops);
+    return ops.size() == 1 && is_push_only();
 }
 
 // TODO: is a minimal data encoding required?
 bool script::is_sign_key_hash_pattern(const operation::stack& ops) const
 {
-    return ops.size() == 2 && is_push_only(ops) &&
+    return ops.size() == 2 && is_push_only() &&
         is_public_key(ops.back().data());
 }
 
 // TODO: is a minimal data encoding required?
 bool script::is_sign_script_hash_pattern(const operation::stack& ops) const
 {
-    if (ops.size() < 2 || !is_push_only(ops))
+    if (ops.size() < 2 || !is_push_only())
         return false;
 
     const auto& redeem_data = ops.back().data();
@@ -714,7 +762,7 @@ size_t script::pay_script_hash_sigops(const script& prevout) const
 
     // Conditions added by EKV on 2016.09.15 for safety and BIP16 consistency.
     // Only push data operations allowed in script, so no signature increment.
-    if (bytes_.empty() || !is_push_only(bytes_))
+    if (bytes_.empty() || !is_push_only())
         return 0;
 
     script eval;
@@ -788,7 +836,7 @@ code script::pay_hash(const transaction& tx, uint32_t input_index,
     const script& input_script, evaluation_context& input_context)
 {
     // Only push data operations allowed in script.
-    if (!is_push_only(input_script))
+    if (!input_script.is_push_only())
         return error::validate_inputs_failed;
 
     // Use the last stack item as the serialized script.

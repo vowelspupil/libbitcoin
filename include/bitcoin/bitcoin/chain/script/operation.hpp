@@ -40,6 +40,7 @@ class BC_API operation
 {
 public:
     typedef std::vector<operation> stack;
+    typedef operation_iterator const_iterator;
 
     // Constructors.
     //-------------------------------------------------------------------------
@@ -133,6 +134,8 @@ public:
     static stack to_pay_public_key_pattern(data_slice point);
     static stack to_pay_key_hash_pattern(const short_hash& hash);
     static stack to_pay_script_hash_pattern(const short_hash& hash);
+
+    bool is_push();
 
     // Validation.
     //-------------------------------------------------------------------------

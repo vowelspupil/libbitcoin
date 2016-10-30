@@ -28,8 +28,13 @@
 namespace libbitcoin {
 namespace chain {
 
+operation_iterator::operation_iterator()
+  : operation_iterator(empty_, false)
+{
+}
+
 operation_iterator::operation_iterator(const data_chunk& value)
-    : operation_iterator(value, false)
+  : operation_iterator(value, false)
 {
 }
 
@@ -62,13 +67,12 @@ operation_iterator::reference operation_iterator::operator*() const
 
 operation_iterator::pointer operation_iterator::operator->() const
 {
-    return *current_;
+    return current_.get();
 }
 
 bool operation_iterator::operator==(const iterator& other) const
 {
-    // Use only offset for end comparison (optimization).
-    return /*(bytes_ == other.bytes_) &&*/ (offset_ == other.offset_);
+    return (&bytes_ == &other.bytes_) && (offset_ == other.offset_);
 }
 
 bool operation_iterator::operator!=(const iterator& other) const

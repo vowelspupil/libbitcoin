@@ -36,8 +36,8 @@ class operation;
 class BC_API operation_iterator
 {
 public:
-    typedef operation pointer;
-    typedef operation reference;
+    typedef operation* pointer;
+    typedef operation& reference;
     typedef operation value_type;
     typedef ptrdiff_t difference_type;
     typedef std::forward_iterator_tag iterator_category;
@@ -46,6 +46,7 @@ public:
     typedef operation_iterator const_iterator;
 
     // constructors
+    operation_iterator();
     operation_iterator(const data_chunk& value);
     operation_iterator(const data_chunk& value, bool end);
     operation_iterator(const data_chunk& value, size_t offset);
@@ -67,11 +68,13 @@ protected:
     void increment();
 
 private:
+    const data_chunk empty_;
     const data_chunk& bytes_;
     data_source stream_;
     istream_reader source_;
     size_t offset_;
 
+    // This is a cache within the iterator.
     // Pointer breaks declaration cycle.
     std::shared_ptr<value_type> current_;
 };

@@ -39,7 +39,6 @@ class evaluation_context
 {
 public:
     typedef script_number number;
-    typedef operation::stack::const_iterator op_iterator;
 
     /// Constructors.
     evaluation_context(uint32_t flags);
@@ -47,15 +46,15 @@ public:
 
     /// Instructions.
     bool initialize(const script& script);
-    void reset(op_iterator instruction);
+    void reset(operation::const_iterator instruction);
 
     /// Operation count.
     bool update_op_count(const operation& op);
     bool update_pubkey_count(int32_t multisig_pubkeys);
 
     /// Properties.
-    op_iterator begin() const;
-    op_iterator end() const;
+    operation::const_iterator begin() const;
+    operation::const_iterator end() const;
     uint32_t flags() const;
 
     /// Stack info.
@@ -89,10 +88,10 @@ public:
 private:
     bool stack_to_bool() const;
 
-    op_iterator begin_;
-    op_iterator end_;
     size_t op_count_;
     const uint32_t flags_;
+    operation::const_iterator begin_;
+    operation::const_iterator end_;
 };
 
 } // namespace chain

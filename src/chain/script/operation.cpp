@@ -20,7 +20,7 @@
 #include <bitcoin/bitcoin/chain/script/operation.hpp>
 
 #include <algorithm>
-#include <boost/algorithm/string.hpp>
+#include <numeric>
 #include <bitcoin/bitcoin/chain/script/rule_fork.hpp>
 #include <bitcoin/bitcoin/chain/script/opcode.hpp>
 #include <bitcoin/bitcoin/chain/script/script.hpp>
@@ -168,29 +168,15 @@ bool operation::from_data(reader& source)
     return valid_;
 }
 
-bool operation::is_valid() const
-{
-    return valid_ || code_ != opcode::push_size_0 || !data_.empty();
-}
-
-// protected
-void operation::reset()
-{
-    code_ = opcode::push_size_0;
-    data_.clear();
-    valid_ = false;
-}
-
 static bool is_push_token(const std::string& token)
 {
     return token.size() > 1 && token.front() == '[' && token.back() == ']';
 }
 
+// The removal of spaces inside of data is a compatability break with v2.
 static std::string trim_push(const std::string& token)
 {
-    std::string token(token.begin() + 1, token.end() - 1);
-    boost::trim(token);
-    return token;
+    return{ token.begin() + 1, token.end() - 1 };
 }
 
 bool operation::from_string(const std::string& mnemonic)
@@ -211,6 +197,19 @@ bool operation::from_string(const std::string& mnemonic)
     }
 
     return valid_;
+}
+
+bool operation::is_valid() const
+{
+    return valid_ || code_ != opcode::push_size_0 || !data_.empty();
+}
+
+// protected
+void operation::reset()
+{
+    code_ = opcode::push_size_0;
+    data_.clear();
+    valid_ = false;
 }
 
 // Serialization.
@@ -258,11 +257,11 @@ void operation::to_data(writer& sink) const
     sink.write_bytes(data_);
 }
 
+// The removal of spaces inside of data is a compatability break with v2.
 std::string operation::to_string(uint32_t active_forks) const
 {
-    // TODO: eliminate whitespace inside of braces.
     return data_.empty() ? opcode_to_string(code_, active_forks) :
-        "[ " + encode_base16(data_) + " ]";
+        "[" + encode_base16(data_) + "]";
 }
 
 // Properties (size, accessors, cache).
@@ -419,6 +418,11 @@ bool operation::is_disabled(opcode code)
         default:
             return false;
     }
+}
+
+bool operation::is_push()
+{
+    return is_push(code_);
 }
 
 // Utilities: pattern templates.

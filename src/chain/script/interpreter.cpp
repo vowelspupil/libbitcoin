@@ -21,6 +21,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <iterator>
 #include <utility>
 #include <bitcoin/bitcoin/constants.hpp>
 #include <bitcoin/bitcoin/chain/script/evaluation_context.hpp>
@@ -44,9 +45,6 @@ enum class signature_parse_result
     invalid,
     lax_encoding
 };
-
-static constexpr auto max_number = 16u;
-static constexpr auto max_push = static_cast<uint8_t>(opcode::push_size_75);
 
 // Operations.
 //-----------------------------------------------------------------------------
@@ -72,9 +70,9 @@ static bool op_nop(opcode)
 // shared handler
 static bool op_push_size(evaluation_context& context, const operation& op)
 {
+    static constexpr auto op_75 = static_cast<uint8_t>(opcode::push_size_75);
     const auto size = op.code();
-
-    BITCOIN_ASSERT(op.data().size() <= max_push);
+    BITCOIN_ASSERT(op.data().size() <= op_75);
     context.stack.push_back(op.data());
     return true;
 }
@@ -92,7 +90,8 @@ static bool op_push_size(evaluation_context& context, const data_chunk& data,
 static bool op_push_number(evaluation_context& context, uint8_t value)
 {
     // This handles positive_0 identically to op_push_size with empty data.
-    BITCOIN_ASSERT(value == script_number::negative_1 || value <= max_number);
+    BITCOIN_ASSERT(value == script_number::negative_1 || 
+        value <= script_number::positive_16);
     context.stack.push_back({ value });
     return true;
 }
@@ -683,11 +682,11 @@ static bool op_hash256(evaluation_context& context)
 }
 
 static bool op_code_seperator(evaluation_context& context,
-    operation::stack::const_iterator op)
+    operation::const_iterator op)
 {
+    // TODO: Increment the iterator to skip past this op (needs + override).
     // Modify context.begin() for the next op_check_[multi_]sig_verify call.
-    // Increment the iterator to skip past this op.
-    context.reset(op /* + 1 */);
+    context.reset(op);
     return true;
 }
 
@@ -708,19 +707,22 @@ static signature_parse_result op_check_sig_verify(evaluation_context& context,
     auto& distinguished = endorsement;
     distinguished.pop_back();
     ec_signature signature;
+    operation::stack ops;
 
     if (strict && !parse_signature(signature, distinguished, true))
         return signature_parse_result::lax_encoding;
 
-    chain::script script_code;
-
-    for (auto op = context.begin(); op != context.end(); ++op)
-        if (op->code() != opcode::codeseparator && op->data() != endorsement)
-            script_code.operations().push_back(*op);
-
     if (!strict && !parse_signature(signature, distinguished, false))
         return signature_parse_result::invalid;
 
+    //*************************************************************************
+    // CONSENSUS: Satoshi has self-modifying code bug in FindAndDelete here.
+    //*************************************************************************
+    for (auto op = context.begin(); op != context.end(); ++op)
+        if (op->data() != endorsement)
+            ops.push_back(*op);
+
+    const chain::script script_code(std::move(ops));
     return script::check_signature(signature, sighash_type, pubkey,
         script_code, tx, input_index) ? signature_parse_result::valid :
         signature_parse_result::invalid;
@@ -770,28 +772,31 @@ static signature_parse_result op_check_multisig_verify(
     if (!context.pop(endorsements, sigs_count))
         return signature_parse_result::invalid;
 
-    // Due to a bug in bitcoind, we need to read an extra null value which we
-    // discard later.
     if (context.stack.empty())
         return signature_parse_result::invalid;
 
+    // Due to a bug in bitcoind, read and discard an extra op/byte.
     context.stack.pop_back();
+    operation::stack ops;
+
     const auto is_endorsement = [&endorsements](const data_chunk& data)
     {
         return std::find(endorsements.begin(), endorsements.end(), data) !=
             endorsements.end();
     };
 
-    chain::script script_code;
-
+    //*************************************************************************
+    // CONSENSUS: Satoshi has self-modifying code bug in FindAndDelete here.
+    //*************************************************************************
     for (auto op = context.begin(); op != context.end(); ++op)
-        if (op->code() != opcode::codeseparator && !is_endorsement(op->data()))
-            script_code.operations().push_back(*op);
+        if (!is_endorsement(op->data()))
+            ops.push_back(*op);
 
     // The exact number of signatures are required and must be in order.
     // One key can validate more than one script. So we always advance 
     // until we exhaust either pubkeys (fail) or signatures (pass).
     auto pubkey_iterator = pubkeys.begin();
+    const chain::script script_code(std::move(ops));
     auto strict = script::is_enabled(context.flags(), rule_fork::bip66_rule);
 
     for (const auto& endorsement: endorsements)
@@ -802,7 +807,6 @@ static signature_parse_result op_check_multisig_verify(
         const auto sighash_type = endorsement.back();
         auto distinguished = endorsement;
         distinguished.pop_back();
-
         ec_signature signature;
 
         if (!parse_signature(signature, distinguished, strict))
@@ -818,9 +822,7 @@ static signature_parse_result op_check_multisig_verify(
                 script_code, tx, input_index))
                 break;
 
-            ++pubkey_iterator;
-
-            if (pubkey_iterator == pubkeys.end())
+            if (++pubkey_iterator == pubkeys.end())
                 return signature_parse_result::invalid;
         }
     }
@@ -919,9 +921,8 @@ bool interpreter::run(const transaction& tx, uint32_t input_index,
     return context.condition.closed();
 }
 
-bool interpreter::run_op(operation::stack::const_iterator op,
-    const transaction& tx, uint32_t input_index, const script& script,
-    evaluation_context& context)
+bool interpreter::run_op(operation::const_iterator op, const transaction& tx,
+    uint32_t input_index, const script& script, evaluation_context& context)
 {
     const auto code = op->code();
     const auto data = op->data();

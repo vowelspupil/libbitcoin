@@ -22,6 +22,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <utility>
+#include <bitcoin/bitcoin/chain/script/operation.hpp>
 #include <bitcoin/bitcoin/chain/script/script.hpp>
 #include <bitcoin/bitcoin/constants.hpp>
 #include <bitcoin/bitcoin/math/script_number.hpp>
@@ -65,13 +66,13 @@ bool evaluation_context::initialize(const script& script)
     if (script.satoshi_content_size() > max_script_size)
         return false;
 
-    begin_ = script.operations().begin();
-    end_ = script.operations().end();
+    begin_ = script.begin();
+    end_ = script.end();
     op_count_ = 0;
     return true;
 }
 
-void evaluation_context::reset(op_iterator instruction)
+void evaluation_context::reset(operation::const_iterator instruction)
 {
     begin_ = instruction;
 }
@@ -107,12 +108,12 @@ bool evaluation_context::update_pubkey_count(int32_t multisig_pubkeys)
 // Properties.
 //-----------------------------------------------------------------------------
 
-evaluation_context::op_iterator evaluation_context::begin() const
+operation::const_iterator evaluation_context::begin() const
 {
     return begin_;
 }
 
-evaluation_context::op_iterator evaluation_context::end() const
+operation::const_iterator evaluation_context::end() const
 {
     return end_;
 }

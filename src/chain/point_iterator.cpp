@@ -61,7 +61,7 @@ uint8_t point_iterator::current() const
 
     const auto position = offset_ - hash_size;
 
-    // TODO: move little-endian indexer into endian.hpp.
+    // TODO: move this little-endian iterator into endian.hpp.
     return position >= sizeof(uint32_t) ? 0 :
         static_cast<uint8_t>(point_.index() >> (position * byte_bits));
 }
@@ -78,8 +78,7 @@ point_iterator::pointer point_iterator::operator->() const
 
 bool point_iterator::operator==(const iterator& other) const
 {
-    // Use only offset for end comparison (optimization).
-    return /*(point_ == other.point_) &&*/ (offset_ == other.offset_);
+    return (&point_ == &other.point_) && (offset_ == other.offset_);
 }
 
 bool point_iterator::operator!=(const iterator& other) const

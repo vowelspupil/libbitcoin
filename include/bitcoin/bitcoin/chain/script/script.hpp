@@ -54,9 +54,12 @@ public:
     script(script&& other);
     script(const script& other);
 
-    // TODO: just use from_data?
     script(data_chunk&& bytes);
     script(const data_chunk& bytes);
+
+    // TODO: create ops cache.
+    script(operation::stack&& ops);
+    script(const operation::stack& ops);
 
     // Operators.
     //-------------------------------------------------------------------------
@@ -67,15 +70,21 @@ public:
     bool operator==(const script& other) const;
     bool operator!=(const script& other) const;
 
+    // Deserialization.
+    //-------------------------------------------------------------------------
+
     static script factory_from_data(const data_chunk& data, bool prefix);
     static script factory_from_data(std::istream& stream, bool prefix);
     static script factory_from_data(reader& source, bool prefix);
 
+    /// Deserialization invalidates the iterator.
     bool from_data(const data_chunk& data, bool prefix);
     bool from_data(std::istream& stream, bool prefix);
     bool from_data(reader& source, bool prefix);
 
+    /// Deserialization invalidates the iterator.
     bool from_string(const std::string& mnemonic);
+    bool from_stack(const operation::stack& ops);
 
     bool is_valid() const;
 
@@ -87,6 +96,7 @@ public:
     void to_data(writer& sink, bool prefix) const;
 
     std::string to_string(uint32_t active_forks) const;
+    operation::stack to_stack() const;
 
     // Iteration.
     //-------------------------------------------------------------------------
@@ -102,8 +112,9 @@ public:
 
     const data_chunk& bytes() const;
 
-    void set_bytes(data_chunk&& value);
-    void set_bytes(const data_chunk& value);
+    /// Assignment invalidates the iterator.
+    void set_bytes(data_chunk&& bytes);
+    void set_bytes(const data_chunk& bytes);
 
     // Signing.
     //-------------------------------------------------------------------------
@@ -142,7 +153,7 @@ protected:
     void reset();
 
     /// Used in all signature script patterns.
-    bool is_push_only(const operation::stack& ops) const;
+    bool is_push_only() const;
 
     /// Unspendable pattern (standard).
     bool is_null_data_pattern(const operation::stack& ops) const;
@@ -160,6 +171,8 @@ protected:
     bool is_sign_script_hash_pattern(const operation::stack& ops) const;
 
 private:
+    static size_t script_size(const operation::stack& ops);
+    static data_chunk to_bytes(const operation::stack& ops);
     static code pay_hash(const transaction& tx, uint32_t input_index,
         const script& input_script, evaluation_context& input_context);
 
