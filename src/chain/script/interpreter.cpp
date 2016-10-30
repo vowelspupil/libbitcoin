@@ -1202,11 +1202,13 @@ bool interpreter::run_op(operation::const_iterator op, const transaction& tx,
         case opcode::checksig:
             return op_check_sig(context, script, tx, input_index);
         case opcode::checksigverify:
-            return op_check_sig_verify(context, script, tx, input_index) == signature_parse_result::valid;
+            return op_check_sig_verify(context, script, tx, input_index) ==
+                signature_parse_result::valid;
         case opcode::checkmultisig:
             return op_check_multisig(context, script, tx, input_index);
         case opcode::checkmultisigverify:
-            return op_check_multisig_verify(context, script, tx, input_index) == signature_parse_result::valid;
+            return op_check_multisig_verify(context, script, tx, input_index) ==
+                signature_parse_result::valid;
         case opcode::nop1:
             return op_nop(code);
         case opcode::checklocktimeverify:
