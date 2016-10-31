@@ -244,7 +244,7 @@ size_t script::serialized_size(const operation_stack& ops)
         return total + op.serialized_size();
     };
 
-    return std::accumulate(ops.begin(), ops.end(), size_t{ 0 }, op_size);
+    return std::accumulate(ops.begin(), ops.end(), size_t{0}, op_size);
 }
 
 // protected
@@ -322,13 +322,13 @@ std::string script::to_string(uint32_t active_forks) const
 operation_iterator script::begin() const
 {
     // The first stack access must be method-based to guarantee the cache.
-    return operation_iterator(stack());
+    return stack().begin();
 }
 
 operation_iterator script::end() const
 {
     // The first stack access must be method-based to guarantee the cache.
-    return operation_iterator(stack(), stack_.size());
+    return stack().end();
 }
 
 // Properties (size, accessors, cache).
@@ -372,8 +372,8 @@ const operation_stack& script::stack() const
     istream_reader source(istream);
     const auto size = bytes_.size();
 
-    mutex_.unlock_upgrade_and_lock();
     //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    mutex_.unlock_upgrade_and_lock();
 
     // One operation per byte is the upper limit of operations.
     stack_.reserve(size);

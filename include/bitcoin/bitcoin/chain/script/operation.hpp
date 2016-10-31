@@ -23,12 +23,10 @@
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
-#include <vector>
 #include <bitcoin/bitcoin/chain/script/opcode.hpp>
 #include <bitcoin/bitcoin/chain/script/operation_iterator.hpp>
 #include <bitcoin/bitcoin/chain/script/script_pattern.hpp>
 #include <bitcoin/bitcoin/define.hpp>
-#include <bitcoin/bitcoin/math/elliptic_curve.hpp>
 #include <bitcoin/bitcoin/utility/data.hpp>
 #include <bitcoin/bitcoin/utility/reader.hpp>
 #include <bitcoin/bitcoin/utility/writer.hpp>
@@ -36,10 +34,12 @@
 namespace libbitcoin {
 namespace chain {
 
+class operation_stack;
+
 class BC_API operation
 {
 public:
-    typedef std::vector<operation> stack;
+    typedef operation_stack list;
     typedef operation_iterator const_iterator;
 
     // Constructors.
@@ -50,7 +50,8 @@ public:
     operation(operation&& other);
     operation(const operation& other);
 
-    // TODO: just use from_data?
+    operation(opcode code);
+
     operation(data_chunk&& data);
     operation(const data_chunk& data);
 
@@ -126,14 +127,6 @@ public:
     static bool is_positive(opcode code);
     static bool is_disabled(opcode code);
     static bool is_conditional(opcode code);
-
-    /// stack factories
-    static stack to_null_data_pattern(data_slice data);
-    static stack to_pay_multisig_pattern(uint8_t signatures, const point_list& points);
-    static stack to_pay_multisig_pattern(uint8_t signatures, const data_stack& points);
-    static stack to_pay_public_key_pattern(data_slice point);
-    static stack to_pay_key_hash_pattern(const short_hash& hash);
-    static stack to_pay_script_hash_pattern(const short_hash& hash);
 
     bool is_push();
 

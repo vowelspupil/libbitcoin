@@ -19,12 +19,20 @@
  */
 #include <bitcoin/bitcoin/chain/script/operation_iterator.hpp>
 
+#include <algorithm>
 #include <cstddef>
-#include <bitcoin/bitcoin/chain/script/operation.hpp>
+#include <cstdlib>
+#include <stdexcept>
+#include <utility>
+#include <bitcoin/bitcoin/chain/script/operation_stack.hpp>
 #include <bitcoin/bitcoin/utility/assert.hpp>
+#include <bitcoin/bitcoin/math/limits.hpp>
 
 namespace libbitcoin {
 namespace chain {
+
+// Constructors.
+//-----------------------------------------------------------------------------
 
 operation_iterator::operation_iterator()
   : operation_iterator(empty_)
@@ -36,10 +44,14 @@ operation_iterator::operation_iterator(const operation_iterator& other)
 {
 }
 
-operation_iterator::operation_iterator(const opstack& value, size_t index)
+operation_iterator::operation_iterator(const operation_stack& value,
+    size_t index)
   : stack_(value), current_(index)
 {
 }
+
+// Operators.
+//-----------------------------------------------------------------------------
 
 operation_iterator::operator bool() const
 {
@@ -54,28 +66,6 @@ operation_iterator::reference operation_iterator::operator*() const
 operation_iterator::pointer operation_iterator::operator->() const
 {
     return &stack_[current_];
-}
-
-bool operation_iterator::operator==(const operation_iterator& other) const
-{
-    return (current_ == other.current_) && (&stack_ == &other.stack_);
-}
-
-bool operation_iterator::operator!=(const operation_iterator& other) const
-{
-    return !(*this == other);
-}
-
-operation_iterator operation_iterator::operator+(size_t value) const
-{
-    const auto position = current_ < stack_.size() ? current_ + 1 : current_;
-    return operation_iterator(stack_, position);
-}
-
-operation_iterator operation_iterator::operator-(size_t value) const
-{
-    const auto position = current_ > 0 ? current_ - 1 : current_;
-    return operation_iterator(stack_, position);
 }
 
 operation_iterator::iterator& operation_iterator::operator++()
@@ -104,6 +94,43 @@ operation_iterator::iterator operation_iterator::operator--(int)
     return it;
 }
 
+operation_iterator operation_iterator::operator+(int value) const
+{
+    return value < 0 ? decrease(static_cast<unsigned>(std::abs(value))) :
+        increase(value);
+}
+
+operation_iterator operation_iterator::operator-(int value) const
+{
+    return value < 0 ? increase(static_cast<unsigned>(std::abs(value))) :
+        decrease(value);
+}
+
+bool operation_iterator::operator==(const operation_iterator& other) const
+{
+    return (current_ == other.current_) && (&stack_ == &other.stack_);
+}
+
+bool operation_iterator::operator!=(const operation_iterator& other) const
+{
+    return !(*this == other);
+}
+
+operation_iterator& operation_iterator::operator=
+    (const operation_iterator& other)
+{
+    if (&stack_ != &other.stack_)
+        throw std::runtime_error("invalid iterator assignment");
+
+    ////stack_ = other.stack_;
+    current_ = other.current_;
+    return *this;
+}
+
+// Utilities.
+//-----------------------------------------------------------------------------
+// private
+
 void operation_iterator::increment()
 {
     if (current_ < stack_.size())
@@ -114,6 +141,18 @@ void operation_iterator::decrement()
 {
     if (current_ > 0)
         current_--;
+}
+
+operation_iterator operation_iterator::increase(size_t value) const
+{
+    const auto index = ceiling_add(current_, value);
+    return operation_iterator(stack_, std::max(index, stack_.size()));
+}
+
+operation_iterator operation_iterator::decrease(size_t value) const
+{
+    const auto index = floor_subtract(current_, value);
+    return operation_iterator(stack_, index);
 }
 
 } // namespace chain

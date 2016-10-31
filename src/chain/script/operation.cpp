@@ -55,6 +55,11 @@ operation::operation(const operation& other)
 {
 }
 
+operation::operation(opcode code)
+  : code_(code), valid_(true)
+{
+}
+
 operation::operation(data_chunk&& data)
   : code_(opcode_from_size(data.size())), data_(std::move(data)),
     valid_(!is_oversized())
@@ -172,7 +177,7 @@ static bool is_push_token(const std::string& token)
 // The removal of spaces inside of data is a compatability break with v2.
 static std::string trim_push(const std::string& token)
 {
-    return{ token.begin() + 1, token.end() - 1 };
+    return std::string(token.begin() + 1, token.end() - 1);
 }
 
 bool operation::from_string(const std::string& mnemonic)
@@ -429,101 +434,6 @@ bool operation::is_disabled(opcode code)
 bool operation::is_push()
 {
     return is_push(code_);
-}
-
-// Utilities: pattern templates.
-// ----------------------------------------------------------------------------
-
-operation_stack operation::to_null_data_pattern(data_slice data)
-{
-    if (data.size() > script::max_null_data_size)
-        return{};
-
-    return operation_stack
-    {
-        { opcode::return_, {} },
-        { opcode::special, to_chunk(data) }
-    };
-}
-
-operation_stack operation::to_pay_public_key_pattern(data_slice point)
-{
-    if (!is_public_key(point))
-        return{};
-
-    return operation_stack
-    {
-        { opcode::special, to_chunk(point) },
-        { opcode::checksig, {} }
-    };
-}
-
-operation_stack operation::to_pay_multisig_pattern(uint8_t signatures,
-    const point_list& points)
-{
-    const auto conversion = [](const ec_compressed& point)
-    {
-        return to_chunk(point);
-    };
-
-    data_stack chunks(points.size());
-    std::transform(points.begin(), points.end(), chunks.begin(), conversion);
-    return to_pay_multisig_pattern(signatures, chunks);
-}
-
-operation_stack operation::to_pay_multisig_pattern(uint8_t signatures,
-    const data_stack& points)
-{
-    static constexpr auto op_81 = static_cast<uint8_t>(opcode::push_positive_1);
-    static constexpr auto op_96 = static_cast<uint8_t>(opcode::push_positive_16);
-    static constexpr auto zero = op_81 - 1;
-    static constexpr auto max = op_96 - zero;
-
-    const auto m = signatures;
-    const auto n = points.size();
-
-    if (m < 1 || m > n || n < 1 || n > max)
-        return operation_stack();
-
-    const auto op_m = static_cast<opcode>(m + zero);
-    const auto op_n = static_cast<opcode>(points.size() + zero);
-
-    operation_stack ops(points.size() + 3);
-    ops.push_back({ op_m, {} });
-
-    for (const auto point: points)
-    {
-        if (!is_public_key(point))
-            return{};
-
-        ops.emplace_back(opcode::special, point);
-    }
-
-    ops.push_back({ op_n, {} });
-    ops.push_back({ opcode::checkmultisig, {} });
-    return ops;
-}
-
-operation_stack operation::to_pay_key_hash_pattern(const short_hash& hash)
-{
-    return operation_stack
-    {
-        { opcode::dup, {} },
-        { opcode::hash160, {} },
-        { opcode::special, to_chunk(hash) },
-        { opcode::equalverify, {} },
-        { opcode::checksig, {} }
-    };
-}
-
-operation_stack operation::to_pay_script_hash_pattern(const short_hash& hash)
-{
-    return operation_stack
-    {
-        { opcode::hash160, {} },
-        { opcode::special, to_chunk(hash) },
-        { opcode::equal, {} }
-    };
 }
 
 // Validation.

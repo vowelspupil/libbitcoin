@@ -165,6 +165,16 @@ transaction& transaction::operator=(transaction&& other)
     return *this;
 }
 
+// TODO: eliminate blockchain transaction copies and then delete this.
+transaction& transaction::operator=(const transaction& other)
+{
+    version_ = other.version_;
+    locktime_ = other.locktime_;
+    inputs_ = other.inputs_;
+    outputs_ = other.outputs_;
+    return *this;
+}
+
 bool transaction::operator==(const transaction& other) const
 {
     return (version_ == other.version_)

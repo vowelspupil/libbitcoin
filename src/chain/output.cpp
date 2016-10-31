@@ -221,7 +221,7 @@ uint64_t output::serialized_size(bool wire) const
 {
     // validation.spender_height is size_t stored as uint32_t.
     return (wire ? 0 : sizeof(uint32_t)) + sizeof(value_) +
-        script_.serialized_size(use_length_prefix);
+        script_.serialized_size(true);
 }
 
 // Accessors.

@@ -68,8 +68,8 @@ inventory::inventory()
 }
 
 inventory::inventory(const inventory_vector::list& values)
+  : inventories_(values)
 {
-    inventories_.insert(inventories_.end(), values.begin(), values.end());
 }
 
 inventory::inventory(inventory_vector::list&& values)
@@ -89,8 +89,8 @@ inventory::inventory(const hash_list& hashes, type_id type)
 }
 
 inventory::inventory(const std::initializer_list<inventory_vector>& values)
+  : inventories_(values)
 {
-    inventories_.insert(inventories_.end(), values.begin(), values.end());
 }
 
 inventory::inventory(const inventory& other)

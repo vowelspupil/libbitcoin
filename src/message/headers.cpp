@@ -69,10 +69,10 @@ headers::headers()
 {
 }
 
+// Uses headers copy assignment.
 headers::headers(const header_message::list& values)
+  : elements_(values)
 {
-    // Uses headers copy assignment.
-    elements_.insert(elements_.end(), values.begin(), values.end());
 }
 
 headers::headers(header_message::list&& values)

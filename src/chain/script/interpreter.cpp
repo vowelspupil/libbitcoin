@@ -685,7 +685,7 @@ static bool op_code_seperator(evaluation_context& context,
     const operation::const_iterator op)
 {
     // Modify context.begin() for the next op_check_[multi_]sig_verify call.
-    context.reset(op + size_t{1});
+    context.reset(op + 1);
     return true;
 }
 

@@ -41,35 +41,43 @@ public:
     typedef point_iterator iterator;
     typedef point_iterator const_iterator;
 
+    // Constructors.
+    //-------------------------------------------------------------------------
+
     point_iterator();
     point_iterator(const point_iterator& other);
-    point_iterator(const point& value, uint8_t index=0);
+    point_iterator(const point& value, unsigned index=0);
+
+    // Operators.
+    //-------------------------------------------------------------------------
 
     operator bool() const;
-
-    reference operator*() const;
     pointer operator->() const;
-
-    bool operator == (const point_iterator& other) const;
-    bool operator != (const point_iterator& other) const;
-    point_iterator operator+(const uint8_t value) const;
-    point_iterator operator-(const uint8_t value) const;
-
+    reference operator*() const;
     point_iterator& operator++();
     point_iterator operator++(int);
     point_iterator& operator--();
     point_iterator operator--(int);
+    point_iterator operator+(const int value) const;
+    point_iterator operator-(const int value) const;
+    bool operator==(const point_iterator& other) const;
+    bool operator!=(const point_iterator& other) const;
+
+    /// The iterator may only be assigned to another of the same point.
+    point_iterator& operator=(const point_iterator& other);
 
 protected:
     void increment();
     void decrement();
+    point_iterator increase(unsigned value) const;
+    point_iterator decrease(unsigned value) const;
 
 private:
     uint8_t current() const;
 
     static const point empty_;
     const point& point_;
-    uint8_t current_;
+    unsigned current_;
 };
 
 } // namespace chain

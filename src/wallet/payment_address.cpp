@@ -236,7 +236,7 @@ payment_address payment_address::extract(const chain::script& script,
         return payment_address();
 
     short_hash hash;
-    const auto& ops = script.operations();
+    const auto& ops = script.stack();
 
     // Split out the assertions for readability.
     // We know that the script is valid and can therefore rely on these.

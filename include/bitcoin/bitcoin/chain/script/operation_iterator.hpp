@@ -22,7 +22,6 @@
 
 #include <cstddef>
 #include <iterator>
-#include <vector>
 #include <bitcoin/bitcoin/define.hpp>
 
 namespace libbitcoin {
@@ -43,32 +42,40 @@ public:
     typedef operation_iterator iterator;
     typedef operation_iterator const_iterator;
 
+    // Constructors.
+    //-------------------------------------------------------------------------
+
     operation_iterator();
     operation_iterator(const operation_iterator& other);
-    operation_iterator(const opstack& value, size_t index = 0);
+    operation_iterator(const operation_stack& value, size_t index=0);
+
+    // Operators.
+    //-------------------------------------------------------------------------
 
     operator bool() const;
-
     reference operator*() const;
     pointer operator->() const;
-
-    bool operator==(const operation_iterator& other) const;
-    bool operator!=(const operation_iterator& other) const;
-    operation_iterator operator+(const size_t value) const;
-    operation_iterator operator-(const size_t value) const;
-
     operation_iterator& operator++();
     operation_iterator operator++(int);
     operation_iterator& operator--();
     operation_iterator operator--(int);
+    operation_iterator operator+(const int value) const;
+    operation_iterator operator-(const int value) const;
+    bool operator==(const operation_iterator& other) const;
+    bool operator!=(const operation_iterator& other) const;
+
+    /// The iterator may only be assigned to another of the same point.
+    operation_iterator& operator=(const operation_iterator& other);
 
 protected:
     void increment();
     void decrement();
+    operation_iterator increase(size_t value) const;
+    operation_iterator decrease(size_t value) const;
 
 private:
-    static const opstack empty_;
-    const opstack& stack_;
+    static const operation_stack empty_;
+    const operation_stack& stack_;
     size_t current_;
 };
 

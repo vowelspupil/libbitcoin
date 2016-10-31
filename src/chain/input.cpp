@@ -135,7 +135,7 @@ bool input::from_data(reader& source, bool)
     if (!previous_output_.from_data(source))
         return false;
 
-    script_.from_data(source, use_length_prefix);
+    script_.from_data(source, true);
     sequence_ = source.read_4_bytes_little_endian();
 
     if (!source)
