@@ -45,7 +45,6 @@ public:
     // Constructors.
     //-------------------------------------------------------------------------
 
-    operation_iterator();
     operation_iterator(const operation_iterator& other);
     operation_iterator(const operation_stack& value, size_t index=0);
 
@@ -64,9 +63,6 @@ public:
     bool operator==(const operation_iterator& other) const;
     bool operator!=(const operation_iterator& other) const;
 
-    /// The iterator may only be assigned to another of the same point.
-    operation_iterator& operator=(const operation_iterator& other);
-
 protected:
     void increment();
     void decrement();
@@ -74,7 +70,6 @@ protected:
     operation_iterator decrease(size_t value) const;
 
 private:
-    static const operation_stack empty_;
     const operation_stack& stack_;
     size_t current_;
 };

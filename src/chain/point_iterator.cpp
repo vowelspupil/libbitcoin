@@ -41,11 +41,6 @@ static const auto point_size = static_cast<unsigned>(
 // Constructors.
 //-----------------------------------------------------------------------------
 
-point_iterator::point_iterator()
-  : point_iterator(empty_)
-{
-}
-
 point_iterator::point_iterator(const point_iterator& other)
   : point_iterator(other.point_, other.current_)
 {
@@ -133,16 +128,6 @@ bool point_iterator::operator==(const point_iterator& other) const
 bool point_iterator::operator!=(const point_iterator& other) const
 {
     return !(*this == other);
-}
-
-point_iterator& point_iterator::operator=(const point_iterator& other)
-{
-    if (&point_ != &other.point_)
-        throw std::runtime_error("invalid iterator assignment");
-
-    ////point_ = other.point_;
-    current_ = other.current_;
-    return *this;
 }
 
 // Utilities.

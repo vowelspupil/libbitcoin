@@ -44,7 +44,6 @@ public:
     // Constructors.
     //-------------------------------------------------------------------------
 
-    point_iterator();
     point_iterator(const point_iterator& other);
     point_iterator(const point& value, unsigned index=0);
 
@@ -75,7 +74,6 @@ protected:
 private:
     uint8_t current() const;
 
-    static const point empty_;
     const point& point_;
     unsigned current_;
 };

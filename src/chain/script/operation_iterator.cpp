@@ -34,11 +34,6 @@ namespace chain {
 // Constructors.
 //-----------------------------------------------------------------------------
 
-operation_iterator::operation_iterator()
-  : operation_iterator(empty_)
-{
-}
-
 operation_iterator::operation_iterator(const operation_iterator& other)
   : operation_iterator(other.stack_, other.current_)
 {
@@ -114,18 +109,6 @@ bool operation_iterator::operator==(const operation_iterator& other) const
 bool operation_iterator::operator!=(const operation_iterator& other) const
 {
     return !(*this == other);
-}
-
-// BUGBUG: this won't hold in current interpreter usage.
-operation_iterator& operation_iterator::operator=
-    (const operation_iterator& other)
-{
-    if (&stack_ != &other.stack_)
-        throw std::runtime_error("invalid iterator assignment");
-
-    ////stack_ = other.stack_;
-    current_ = other.current_;
-    return *this;
 }
 
 // Utilities.
