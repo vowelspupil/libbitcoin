@@ -39,7 +39,6 @@
 #include <bitcoin/bitcoin/chain/script/interpreter.hpp>
 #include <bitcoin/bitcoin/chain/script/opcode.hpp>
 #include <bitcoin/bitcoin/chain/script/operation.hpp>
-#include <bitcoin/bitcoin/chain/script/operation_iterator.hpp>
 #include <bitcoin/bitcoin/chain/script/operation_stack.hpp>
 #include <bitcoin/bitcoin/chain/script/rule_fork.hpp>
 #include <bitcoin/bitcoin/chain/script/script.hpp>

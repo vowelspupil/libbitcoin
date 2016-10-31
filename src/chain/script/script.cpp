@@ -29,7 +29,6 @@
 #include <bitcoin/bitcoin/chain/script/interpreter.hpp>
 #include <bitcoin/bitcoin/chain/script/opcode.hpp>
 #include <bitcoin/bitcoin/chain/script/operation.hpp>
-#include <bitcoin/bitcoin/chain/script/operation_iterator.hpp>
 #include <bitcoin/bitcoin/chain/script/rule_fork.hpp>
 #include <bitcoin/bitcoin/chain/script/script_pattern.hpp>
 #include <bitcoin/bitcoin/chain/script/sighash_algorithm.hpp>
@@ -57,9 +56,6 @@ static const auto anyone_flag = sighash_algorithm::anyone_can_pay;
 // bit.ly/2cPazSa
 static const auto one_hash = hash_literal(
     "0000000000000000000000000000000000000000000000000000000000000001");
-
-// This is policy, not consensus.
-const size_t script::max_null_data_size = 80;
 
 // Constructors.
 //-----------------------------------------------------------------------------
@@ -332,13 +328,13 @@ std::string script::to_string(uint32_t active_forks) const
 // Iteration.
 //-----------------------------------------------------------------------------
 
-operation_iterator script::begin() const
+operation::const_iterator script::begin() const
 {
     // The first stack access must be method-based to guarantee the cache.
     return stack().begin();
 }
 
-operation_iterator script::end() const
+operation::const_iterator script::end() const
 {
     // The first stack access must be method-based to guarantee the cache.
     return stack().end();
@@ -607,148 +603,6 @@ bool script::create_endorsement(endorsement& out, const ec_secret& secret,
     // Add the sighash type to the end of the DER signature -> endorsement.
     out.push_back(sighash_type);
     return true;
-}
-
-// Utilities: pattern comparisons.
-// ----------------------------------------------------------------------------
-// protected
-
-bool script::is_push_only() const
-{
-    const auto push = [](const operation& op)
-    {
-        return operation::is_push(op.code());
-    };
-
-    return std::all_of(begin(), end(), push);
-}
-
-// TODO: is a minimal data encoding required?
-bool script::is_null_data_pattern() const
-{
-    // The first stack access must be method-based to guarantee the cache.
-    return stack().size() == 2
-        && stack_[0].code() == opcode::return_
-        && stack_[1].is_push()
-        && stack_[1].data().size() <= max_null_data_size;
-}
-
-bool script::is_pay_multisig_pattern() const
-{
-    static constexpr size_t op_1 = static_cast<uint8_t>(opcode::push_positive_1);
-    static constexpr size_t op_16 = static_cast<uint8_t>(opcode::push_positive_16);
-
-    // The first stack access must be method-based to guarantee the cache.
-    const auto op_count = stack().size();
-
-    if (op_count < 4 || stack_[op_count - 1].code() != opcode::checkmultisig)
-        return false;
-
-    const auto op_m = static_cast<uint8_t>(stack_[0].code());
-    const auto op_n = static_cast<uint8_t>(stack_[op_count - 2].code());
-
-    if (op_m < op_1 || op_m > op_n || op_n < op_1 || op_n > op_16)
-        return false;
-
-    const auto number = op_n - op_1;
-    const auto points = op_count - 3u;
-
-    if (number != points)
-        return false;
-
-    for (auto op = stack_.begin() + 1; op != stack_.end() - 2; ++op)
-        if (!is_public_key(op->data()))
-            return false;
-
-    return true;
-}
-
-// TODO: is a minimal data encoding required?
-bool script::is_pay_public_key_pattern() const
-{
-    // The first stack access must be method-based to guarantee the cache.
-    return stack().size() == 2
-        && stack_[0].is_push()
-        && is_public_key(stack_[0].data())
-        && stack_[1].code() == opcode::checksig;
-}
-
-// TODO: is a minimal data encoding required?
-bool script::is_pay_key_hash_pattern() const
-{
-    // The first stack access must be method-based to guarantee the cache.
-    return stack().size() == 5
-        && stack_[0].code() == opcode::dup
-        && stack_[1].code() == opcode::hash160
-        && stack_[2].is_push()
-        && stack_[2].data().size() == short_hash_size
-        && stack_[3].code() == opcode::equalverify
-        && stack_[4].code() == opcode::checksig;
-}
-
-// TODO: is a minimal data encoding required?
-bool script::is_pay_script_hash_pattern() const
-{
-    // The first stack access must be method-based to guarantee the cache.
-    return stack().size() == 3
-        && stack_[0].code() == opcode::hash160
-        && stack_[1].is_push()
-        && stack_[1].data().size() == short_hash_size
-        && stack_[2].code() == opcode::equal;
-}
-
-// TODO: is a minimal data encoding required?
-bool script::is_sign_multisig_pattern() const
-{
-    // The first stack access must be method-based to guarantee the cache.
-    if (stack().size() < 2 || !is_push_only())
-        return false;
-
-    if (stack_.front().code() != opcode::push_size_0)
-        return false;
-
-    return true;
-}
-
-// TODO: is a minimal data encoding required?
-bool script::is_sign_public_key_pattern() const
-{
-    // The first stack access must be method-based to guarantee the cache.
-    return stack().size() == 1 && is_push_only();
-}
-
-// TODO: is a minimal data encoding required?
-bool script::is_sign_key_hash_pattern() const
-{
-    // The first stack access must be method-based to guarantee the cache.
-    return stack().size() == 2 && is_push_only() &&
-        is_public_key(stack_.back().data());
-}
-
-// TODO: is a minimal data encoding required?
-bool script::is_sign_script_hash_pattern() const
-{
-    // The first stack access must be method-based to guarantee the cache.
-    if (stack().size() < 2 || !is_push_only())
-        return false;
-
-    const auto& redeem_data = stack_.back().data();
-
-    if (redeem_data.empty())
-        return false;
-
-    script redeem;
-
-    if (!redeem.from_data(redeem_data, false))
-        return false;
-
-    // Is the redeem script a standard pay (output) script?
-    const auto redeem_script_pattern = redeem.pattern();
-    return redeem_script_pattern == script_pattern::pay_multisig
-        || redeem_script_pattern == script_pattern::pay_public_key
-        || redeem_script_pattern == script_pattern::pay_key_hash
-        || redeem_script_pattern == script_pattern::pay_script_hash
-        || redeem_script_pattern == script_pattern::null_data;
 }
 
 // Utilities.

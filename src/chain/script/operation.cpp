@@ -431,17 +431,37 @@ bool operation::is_disabled(opcode code)
     }
 }
 
-bool operation::is_push()
+// Validation.
+//-------------------------------------------------------------------------
+
+bool operation::is_push() const
 {
     return is_push(code_);
 }
 
-// Validation.
-//-------------------------------------------------------------------------
+bool operation::is_counted() const
+{
+    return is_counted(code_);
+}
+
+bool operation::is_push() const
+{
+    return is_push(code_);
+}
+
+bool operation::is_positive() const
+{
+    return is_positive(code_);
+}
 
 bool operation::is_disabled() const
 {
     return is_disabled(code_);
+}
+
+bool operation::is_conditional() const
+{
+    return is_conditional(code_);
 }
 
 bool operation::is_oversized() const

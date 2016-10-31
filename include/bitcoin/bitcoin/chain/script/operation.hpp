@@ -23,8 +23,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
+#include <vector>
 #include <bitcoin/bitcoin/chain/script/opcode.hpp>
-#include <bitcoin/bitcoin/chain/script/operation_iterator.hpp>
 #include <bitcoin/bitcoin/chain/script/script_pattern.hpp>
 #include <bitcoin/bitcoin/define.hpp>
 #include <bitcoin/bitcoin/utility/data.hpp>
@@ -34,13 +34,11 @@
 namespace libbitcoin {
 namespace chain {
 
-class operation_stack;
-
 class BC_API operation
 {
 public:
-    typedef operation_stack list;
-    typedef operation_iterator const_iterator;
+    typedef std::vector<operation> list;
+    typedef std::vector<operation>::const_iterator const_iterator;
 
     // Constructors.
     //-------------------------------------------------------------------------
@@ -88,12 +86,6 @@ public:
 
     std::string to_string(uint32_t active_forks) const;
 
-    // Iteration.
-    //-------------------------------------------------------------------------
-
-    operation_iterator begin() const;
-    operation_iterator end() const;
-
     // Properties (size, accessors, cache).
     //-------------------------------------------------------------------------
 
@@ -128,12 +120,14 @@ public:
     static bool is_disabled(opcode code);
     static bool is_conditional(opcode code);
 
-    bool is_push();
-
     // Validation.
     //-------------------------------------------------------------------------
 
+    bool is_push() const;
+    bool is_counted() const;
+    bool is_positive() const;
     bool is_disabled() const;
+    bool is_conditional() const;
     bool is_oversized() const;
 
 protected:

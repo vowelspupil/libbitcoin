@@ -29,7 +29,6 @@
 #include <bitcoin/bitcoin/error.hpp>
 #include <bitcoin/bitcoin/chain/script/evaluation_context.hpp>
 #include <bitcoin/bitcoin/chain/script/operation.hpp>
-#include <bitcoin/bitcoin/chain/script/operation_iterator.hpp>
 #include <bitcoin/bitcoin/chain/script/operation_stack.hpp>
 #include <bitcoin/bitcoin/chain/script/rule_fork.hpp>
 #include <bitcoin/bitcoin/chain/script/script_pattern.hpp>
@@ -107,8 +106,8 @@ public:
     // Iteration.
     //-------------------------------------------------------------------------
 
-    operation_iterator begin() const;
-    operation_iterator end() const;
+    operation::const_iterator begin() const;
+    operation::const_iterator end() const;
 
     // Properties (size, accessors, cache).
     //-------------------------------------------------------------------------
@@ -157,21 +156,6 @@ protected:
 
     /// Used in all signature script patterns.
     bool is_push_only() const;
-
-    /// Unspendable pattern (standard).
-    bool is_null_data_pattern() const;
-
-    /// Payment script patterns (standard).
-    bool is_pay_multisig_pattern() const;
-    bool is_pay_public_key_pattern() const;
-    bool is_pay_key_hash_pattern() const;
-    bool is_pay_script_hash_pattern() const;
-
-    /// Signature script patterns (standard).
-    bool is_sign_multisig_pattern() const;
-    bool is_sign_public_key_pattern() const;
-    bool is_sign_key_hash_pattern() const;
-    bool is_sign_script_hash_pattern() const;
 
 private:
     static size_t serialized_size(const operation_stack& ops);

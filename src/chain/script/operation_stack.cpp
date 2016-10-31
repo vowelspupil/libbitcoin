@@ -23,16 +23,135 @@
 #include <initializer_list>
 #include <utility>
 #include <bitcoin/bitcoin/chain/script/opcode.hpp>
-#include <bitcoin/bitcoin/chain/script/operation_iterator.hpp>
 #include <bitcoin/bitcoin/chain/script/script.hpp>
+#include <bitcoin/bitcoin/constants.hpp>
+#include <bitcoin/bitcoin/math/elliptic_curve.hpp>
 
 namespace libbitcoin {
 namespace chain {
-    
-// Factories.
-//-----------------------------------------------------------------------------
 
-operation_stack operation_stack::to_null_data_pattern(data_slice data)
+bool is_push_only(const operation_stack& ops)
+{
+    const auto push = [](const operation& op)
+    {
+        return op.is_push();
+    };
+
+    return std::all_of(ops.begin(), ops.end(), push);
+}
+
+bool is_null_data_pattern(const operation_stack& ops)
+{
+    return ops.size() == 2
+        && ops[0].code() == opcode::return_
+        && ops[1].is_push()
+        && ops[1].data().size() <= max_null_data_size;
+}
+
+bool is_pay_multisig_pattern(const operation_stack& ops)
+{
+    static constexpr size_t op_1 = static_cast<uint8_t>(opcode::push_positive_1);
+    static constexpr size_t op_16 = static_cast<uint8_t>(opcode::push_positive_16);
+
+    const auto op_count = ops.size();
+
+    if (op_count < 4 || ops[op_count - 1].code() != opcode::checkmultisig)
+        return false;
+
+    const auto op_m = static_cast<uint8_t>(ops[0].code());
+    const auto op_n = static_cast<uint8_t>(ops[op_count - 2].code());
+
+    if (op_m < op_1 || op_m > op_n || op_n < op_1 || op_n > op_16)
+        return false;
+
+    const auto number = op_n - op_1;
+    const auto points = op_count - 3u;
+
+    if (number != points)
+        return false;
+
+    for (auto op = ops.begin() + 1; op != ops.end() - 2; ++op)
+        if (!is_public_key(op->data()))
+            return false;
+
+    return true;
+}
+
+bool is_pay_public_key_pattern(const operation_stack& ops)
+{
+    return ops.size() == 2
+        && ops[0].is_push()
+        && is_public_key(ops[0].data())
+        && ops[1].code() == opcode::checksig;
+}
+
+bool is_pay_key_hash_pattern(const operation_stack& ops)
+{
+    return ops.size() == 5
+        && ops[0].code() == opcode::dup
+        && ops[1].code() == opcode::hash160
+        && ops[2].is_push()
+        && ops[2].data().size() == short_hash_size
+        && ops[3].code() == opcode::equalverify
+        && ops[4].code() == opcode::checksig;
+}
+
+bool is_pay_script_hash_pattern(const operation_stack& ops)
+{
+    return ops.size() == 3
+        && ops[0].code() == opcode::hash160
+        && ops[1].is_push()
+        && ops[1].data().size() == short_hash_size
+        && ops[2].code() == opcode::equal;
+}
+
+bool is_sign_multisig_pattern(const operation_stack& ops)
+{
+    if (ops.size() < 2 || !is_push_only(ops))
+        return false;
+
+    if (ops.front().code() != opcode::push_size_0)
+        return false;
+
+    return true;
+}
+
+bool is_sign_public_key_pattern(const operation_stack& ops)
+{
+    return ops.size() == 1 && is_push_only(ops);
+}
+
+bool is_sign_key_hash_pattern(const operation_stack& ops)
+{
+    return ops.size() == 2 && is_push_only(ops) &&
+        is_public_key(ops.back().data());
+}
+
+bool is_sign_script_hash_pattern(const operation_stack& ops)
+{
+    if (ops.size() < 2 || !is_push_only(ops))
+        return false;
+
+    const auto& redeem_data = ops.back().data();
+
+    if (redeem_data.empty())
+        return false;
+
+    script redeem;
+
+    if (!redeem.from_data(redeem_data, false))
+        return false;
+
+    // Is the redeem script a standard pay (output) script?
+    const auto redeem_script_pattern = redeem.pattern();
+    return redeem_script_pattern == script_pattern::pay_multisig
+        || redeem_script_pattern == script_pattern::pay_public_key
+        || redeem_script_pattern == script_pattern::pay_key_hash
+        || redeem_script_pattern == script_pattern::pay_script_hash
+        || redeem_script_pattern == script_pattern::null_data;
+}
+    
+operation_stack to_null_data_pattern(data_slice data)
 {
     if (data.size() > script::max_null_data_size)
         return{};
@@ -44,7 +163,7 @@ operation_stack operation_stack::to_null_data_pattern(data_slice data)
     };
 }
 
-operation_stack operation_stack::to_pay_public_key_pattern(data_slice point)
+operation_stack to_pay_public_key_pattern(data_slice point)
 {
     if (!is_public_key(point))
         return{};
@@ -56,8 +175,7 @@ operation_stack operation_stack::to_pay_public_key_pattern(data_slice point)
     };
 }
 
-operation_stack operation_stack::to_pay_key_hash_pattern(
-    const short_hash& hash)
+operation_stack to_pay_key_hash_pattern(const short_hash& hash)
 {
     return operation_stack
     {
@@ -69,8 +187,7 @@ operation_stack operation_stack::to_pay_key_hash_pattern(
     };
 }
 
-operation_stack operation_stack::to_pay_script_hash_pattern(
-    const short_hash& hash)
+operation_stack to_pay_script_hash_pattern(const short_hash& hash)
 {
     return operation_stack
     {
@@ -80,7 +197,7 @@ operation_stack operation_stack::to_pay_script_hash_pattern(
     };
 }
 
-operation_stack operation_stack::to_pay_multisig_pattern(uint8_t signatures,
+operation_stack to_pay_multisig_pattern(uint8_t signatures,
     const point_list& points)
 {
     const auto conversion = [](const ec_compressed& point)
@@ -93,7 +210,7 @@ operation_stack operation_stack::to_pay_multisig_pattern(uint8_t signatures,
     return to_pay_multisig_pattern(signatures, chunks);
 }
 
-operation_stack operation_stack::to_pay_multisig_pattern(uint8_t signatures,
+operation_stack to_pay_multisig_pattern(uint8_t signatures,
     const data_stack& points)
 {
     static constexpr auto op_81 = static_cast<uint8_t>(opcode::push_positive_1);
@@ -127,135 +244,68 @@ operation_stack operation_stack::to_pay_multisig_pattern(uint8_t signatures,
     return ops;
 }
 
-// Constructors.
-//-----------------------------------------------------------------------------
-
-operation_stack::operation_stack()
-{
-}
-
-operation_stack::operation_stack(operation_stack&& other)
-  : stack_(std::move(other.stack_))
-{
-}
-
-operation_stack::operation_stack(const operation_stack& other)
-  : stack_(other.stack_)
-{
-}
-
-operation_stack::operation_stack(const std::initializer_list<operation>& list)
-  : stack_(list)
-{
-}
-
-operation_stack::operation_stack(std::initializer_list<operation>&& list)
-  : stack_(std::move(list))
-{
-}
-
-// Operators.
-//-----------------------------------------------------------------------------
-
-operation_stack& operation_stack::operator=(operation_stack&& other)
-{
-    stack_ = std::move(other.stack_);
-    return *this;
-}
-
-operation_stack& operation_stack::operator=(const operation_stack& other)
-{
-    stack_ = other.stack_;
-    return *this;
-}
-
-bool operation_stack::operator==(const operation_stack& other) const
-{
-    return stack_ == other.stack_;
-}
-
-bool operation_stack::operator!=(const operation_stack& other) const
-{
-    return !(*this == other);
-}
-
-operation& operation_stack::operator[](std::size_t index)
-{
-    return stack_[index];
-}
-
-const operation& operation_stack::operator[](std::size_t index) const
-{
-    return stack_[index];
-}
-
-// Iteration.
-//-----------------------------------------------------------------------------
-
-operation_iterator operation_stack::begin() const
-{
-    // The first stack access must be method-based to guarantee the cache.
-    return operation_iterator(*this);
-}
-
-operation_iterator operation_stack::end() const
-{
-    // The first stack access must be method-based to guarantee the cache.
-    return operation_iterator(*this, size());
-}
-
 // Vector.
 //-----------------------------------------------------------------------------
 
-void operation_stack::clear()
-{
-    stack_.clear();
-}
-
-bool operation_stack::empty() const
-{
-    return stack_.empty();
-}
-
-size_t operation_stack::size() const
-{
-    return stack_.size();
-}
-
-void operation_stack::shrink_to_fit()
-{
-    stack_.shrink_to_fit();
-}
-
-void operation_stack::resize(size_t size)
-{
-    stack_.resize(size);
-}
-
-void operation_stack::reserve(size_t size)
-{
-    stack_.reserve(size);
-}
-
-const operation& operation_stack::back() const
-{
-    return stack_.back();
-}
-
-const operation& operation_stack::front() const
-{
-    return stack_.front();
-}
-
-void operation_stack::push_back(operation&& op)
-{
-    stack_.push_back(std::move(op));
-}
-
-void operation_stack::push_back(const operation& op)
-{
-    stack_.push_back(op);
-}
+////operation& operation_stack::operator[](std::size_t index)
+////{
+////    return stack_[index];
+////}
+////
+////const operation& operation_stack::operator[](std::size_t index) const
+////{
+////    return stack_[index];
+////}
+////
+////void operation_stack::clear()
+////{
+////    stack_.clear();
+////}
+////
+////bool operation_stack::empty() const
+////{
+////    return stack_.empty();
+////}
+////
+////size_t operation_stack::size() const
+////{
+////    return stack_.size();
+////}
+////
+////void operation_stack::shrink_to_fit()
+////{
+////    stack_.shrink_to_fit();
+////}
+////
+////void operation_stack::resize(size_t size)
+////{
+////    stack_.resize(size);
+////}
+////
+////void operation_stack::reserve(size_t size)
+////{
+////    stack_.reserve(size);
+////}
+////
+////const operation& operation_stack::back() const
+////{
+////    return stack_.back();
+////}
+////
+////const operation& operation_stack::front() const
+////{
+////    return stack_.front();
+////}
+////
+////void operation_stack::push_back(operation&& op)
+////{
+////    stack_.push_back(std::move(op));
+////}
+////
+////void operation_stack::push_back(const operation& op)
+////{
+////    stack_.push_back(op);
+////}
 
 } // namespace chain
 } // namespace libbitcoin
