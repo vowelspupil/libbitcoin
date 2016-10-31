@@ -60,6 +60,7 @@ public:
     script(operation_stack&& ops);
     script(const operation_stack& ops);
 
+    script(data_chunk&& bytes, bool prefix);
     script(const data_chunk& bytes, bool prefix);
 
     // Operators.

@@ -46,6 +46,33 @@ enum class signature_parse_result
     lax_encoding
 };
 
+// Utility.
+//-----------------------------------------------------------------------------
+// private
+
+// TODO: move to script.
+static script strip_endorsements(const evaluation_context& context,
+    const data_stack& endorsements)
+{
+    operation_stack ops;
+    const auto& end = endorsements.end();
+    const auto& begin = endorsements.begin();
+    const auto is_endorsement = [&begin, &end](const data_chunk& data)
+    {
+        return std::find(begin, end, data) != end;
+    };
+
+    //*************************************************************************
+    // CONSENSUS: Satoshi has a bug in FindAndDelete that we do not reproduce.
+    // Its endorsement removal will strip matching operations, not just data.
+    //*************************************************************************
+    for (auto op = context.jump(); op != context.end(); ++op)
+        if (!is_endorsement(op->data()))
+            ops.push_back(*op);
+
+    return script(std::move(ops));
+}
+
 // Operations.
 //-----------------------------------------------------------------------------
 // shared handler
@@ -685,7 +712,7 @@ static bool op_code_seperator(evaluation_context& context,
     const operation::const_iterator op)
 {
     // Modify context.begin() for the next op_check_[multi_]sig_verify call.
-    context.reset(op + 1);
+    context.set_jump(op + 1);
     return true;
 }
 
@@ -706,7 +733,6 @@ static signature_parse_result op_check_sig_verify(evaluation_context& context,
     auto& distinguished = endorsement;
     distinguished.pop_back();
     ec_signature signature;
-    operation_stack ops;
 
     if (strict && !parse_signature(signature, distinguished, true))
         return signature_parse_result::lax_encoding;
@@ -714,14 +740,8 @@ static signature_parse_result op_check_sig_verify(evaluation_context& context,
     if (!strict && !parse_signature(signature, distinguished, false))
         return signature_parse_result::invalid;
 
-    //*************************************************************************
-    // CONSENSUS: Satoshi has self-modifying code bug in FindAndDelete here.
-    //*************************************************************************
-    for (auto op = context.begin(); op != context.end(); ++op)
-        if (op->data() != endorsement)
-            ops.push_back(*op);
+    const auto script_code = strip_endorsements(context, { endorsement });
 
-    const chain::script script_code(std::move(ops));
     return script::check_signature(signature, sighash_type, pubkey,
         script_code, tx, input_index) ? signature_parse_result::valid :
         signature_parse_result::invalid;
@@ -767,8 +787,8 @@ static signature_parse_result op_check_multisig_verify(
     if (sigs_count < 0 || sigs_count > pubkeys_count)
         return signature_parse_result::invalid;
 
-    data_stack sigs;
-    if (!context.pop(sigs, sigs_count))
+    data_stack endorsements;
+    if (!context.pop(endorsements, sigs_count))
         return signature_parse_result::invalid;
 
     if (context.stack.empty())
@@ -776,29 +796,15 @@ static signature_parse_result op_check_multisig_verify(
 
     // Due to a bug in bitcoind, read and discard an extra op/byte.
     context.stack.pop_back();
-    operation_stack ops;
-
-    const auto is_endorsement = [&sigs](const data_chunk& data)
-    {
-        return std::find(sigs.begin(), sigs.end(), data) != sigs.end();
-    };
-
-    //*************************************************************************
-    // CONSENSUS: Satoshi has a bug in FindAndDelete that we do not reproduce.
-    // Its endorsement removal will strip matching operations, not just data.
-    //*************************************************************************
-    for (auto op = context.begin(); op != context.end(); ++op)
-        if (!is_endorsement(op->data()))
-            ops.push_back(*op);
-
+    
     // The exact number of signatures are required and must be in order.
     // One key can validate more than one script. So we always advance 
     // until we exhaust either pubkeys (fail) or signatures (pass).
     auto pubkey_iterator = pubkeys.begin();
-    const chain::script script_code(std::move(ops));
+    const auto script_code = strip_endorsements(context, endorsements);
     auto strict = script::is_enabled(context.flags(), rule_fork::bip66_rule);
 
-    for (const auto& endorsement: sigs)
+    for (const auto& endorsement: endorsements)
     {
         if (endorsement.empty())
             return signature_parse_result::invalid;
@@ -893,7 +899,7 @@ static bool op_check_locktime_verify(evaluation_context& context,
 bool interpreter::run(const transaction& tx, uint32_t input_index,
     const script& script, evaluation_context& context)
 {
-    if (!context.initialize(script))
+    if (!context.set_script(script))
         return false;
 
     for (auto op = context.begin(); op != context.end(); ++op)

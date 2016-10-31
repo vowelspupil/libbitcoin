@@ -45,8 +45,8 @@ public:
     evaluation_context(uint32_t flags, const data_stack& value);
 
     /// Instructions.
-    bool initialize(const script& script);
-    void reset(operation::const_iterator instruction);
+    bool set_script(const script& script);
+    void set_jump(operation::const_iterator instruction);
 
     /// Operation count.
     bool update_op_count(const operation& op);
@@ -54,6 +54,7 @@ public:
 
     /// Properties.
     operation::const_iterator begin() const;
+    operation::const_iterator jump() const;
     operation::const_iterator end() const;
     uint32_t flags() const;
 
@@ -91,6 +92,7 @@ private:
     size_t op_count_;
     const uint32_t flags_;
     operation::const_iterator begin_;
+    operation::const_iterator jump_;
     operation::const_iterator end_;
 };
 

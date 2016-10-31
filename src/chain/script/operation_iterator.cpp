@@ -116,6 +116,7 @@ bool operation_iterator::operator!=(const operation_iterator& other) const
     return !(*this == other);
 }
 
+// BUGBUG: this won't hold in current interpreter usage.
 operation_iterator& operation_iterator::operator=
     (const operation_iterator& other)
 {

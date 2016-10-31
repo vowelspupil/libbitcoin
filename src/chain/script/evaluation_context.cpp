@@ -60,7 +60,7 @@ evaluation_context::evaluation_context(uint32_t flags, const data_stack& value)
 //-----------------------------------------------------------------------------
 
 // This does not clear the stacks.
-bool evaluation_context::initialize(const script& script)
+bool evaluation_context::set_script(const script& script)
 {
     // bit.ly/2c9HzmN
     if (script.satoshi_content_size() > max_script_size)
@@ -72,9 +72,9 @@ bool evaluation_context::initialize(const script& script)
     return true;
 }
 
-void evaluation_context::reset(operation::const_iterator instruction)
+void evaluation_context::set_jump(operation::const_iterator instruction)
 {
-    begin_ = instruction;
+    jump_ = instruction;
 }
 
 // Operation count.
@@ -111,6 +111,11 @@ bool evaluation_context::update_pubkey_count(int32_t multisig_pubkeys)
 operation::const_iterator evaluation_context::begin() const
 {
     return begin_;
+}
+
+operation::const_iterator evaluation_context::jump() const
+{
+    return jump_;
 }
 
 operation::const_iterator evaluation_context::end() const

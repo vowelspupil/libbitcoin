@@ -92,6 +92,19 @@ script::script(operation_stack&& ops)
     valid_ = from_stack(ops);
 }
 
+script::script(data_chunk&& bytes, bool prefix)
+{
+    if (prefix)
+    {
+        // TODO: store prefix in bytes_ to simplify and optimize this.
+        valid_ = from_data(bytes, prefix);
+        return;
+    }
+
+    bytes_ = std::move(bytes);
+    valid_ = true;
+}
+
 script::script(const data_chunk& bytes, bool prefix)
 {
     valid_ = from_data(bytes, prefix);
