@@ -56,8 +56,8 @@ public:
     script(script&& other);
     script(const script& other);
 
-    script(operation::stack&& ops);
-    script(const operation::stack& ops);
+    script(operation_stack&& ops);
+    script(const operation_stack& ops);
 
     script(const data_chunk& bytes, bool prefix);
 
@@ -84,7 +84,7 @@ public:
     bool from_data(reader& source, bool prefix);
 
     /// Deserialization invalidates the iterator.
-    bool from_stack(const operation::stack& ops);
+    bool from_stack(const operation_stack& ops);
     bool from_string(const std::string& mnemonic);
 
     /// A script object is valid if the byte count matches the prefix.
@@ -115,7 +115,7 @@ public:
     uint64_t serialized_size(bool prefix) const;
 
     const data_chunk& bytes() const;
-    const operation::stack& stack() const;
+    const operation_stack& stack() const;
 
     // Signing.
     //-------------------------------------------------------------------------
@@ -172,8 +172,8 @@ protected:
     bool is_sign_script_hash_pattern() const;
 
 private:
-    static size_t serialized_size(const operation::stack& ops);
-    static bool stack_to_data(data_chunk& out, const operation::stack& ops);
+    static size_t serialized_size(const operation_stack& ops);
+    static bool stack_to_data(data_chunk& out, const operation_stack& ops);
     static code pay_hash(const transaction& tx, uint32_t input_index,
         const script& input_script, evaluation_context& input_context);
 
@@ -184,7 +184,7 @@ private:
 
     // These are protected by mutex.
     mutable bool cached_;
-    mutable operation::stack stack_;
+    mutable operation_stack stack_;
     mutable upgrade_mutex mutex_;
 };
 

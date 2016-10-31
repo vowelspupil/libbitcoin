@@ -434,31 +434,31 @@ bool operation::is_push()
 // Utilities: pattern templates.
 // ----------------------------------------------------------------------------
 
-operation::stack operation::to_null_data_pattern(data_slice data)
+operation_stack operation::to_null_data_pattern(data_slice data)
 {
     if (data.size() > script::max_null_data_size)
         return{};
 
-    return operation::stack
+    return operation_stack
     {
         { opcode::return_, {} },
         { opcode::special, to_chunk(data) }
     };
 }
 
-operation::stack operation::to_pay_public_key_pattern(data_slice point)
+operation_stack operation::to_pay_public_key_pattern(data_slice point)
 {
     if (!is_public_key(point))
         return{};
 
-    return operation::stack
+    return operation_stack
     {
         { opcode::special, to_chunk(point) },
         { opcode::checksig, {} }
     };
 }
 
-operation::stack operation::to_pay_multisig_pattern(uint8_t signatures,
+operation_stack operation::to_pay_multisig_pattern(uint8_t signatures,
     const point_list& points)
 {
     const auto conversion = [](const ec_compressed& point)
@@ -471,7 +471,7 @@ operation::stack operation::to_pay_multisig_pattern(uint8_t signatures,
     return to_pay_multisig_pattern(signatures, chunks);
 }
 
-operation::stack operation::to_pay_multisig_pattern(uint8_t signatures,
+operation_stack operation::to_pay_multisig_pattern(uint8_t signatures,
     const data_stack& points)
 {
     static constexpr auto op_81 = static_cast<uint8_t>(opcode::push_positive_1);
@@ -483,12 +483,12 @@ operation::stack operation::to_pay_multisig_pattern(uint8_t signatures,
     const auto n = points.size();
 
     if (m < 1 || m > n || n < 1 || n > max)
-        return operation::stack();
+        return operation_stack();
 
     const auto op_m = static_cast<opcode>(m + zero);
     const auto op_n = static_cast<opcode>(points.size() + zero);
 
-    operation::stack ops(points.size() + 3);
+    operation_stack ops(points.size() + 3);
     ops.push_back({ op_m, {} });
 
     for (const auto point: points)
@@ -504,9 +504,9 @@ operation::stack operation::to_pay_multisig_pattern(uint8_t signatures,
     return ops;
 }
 
-operation::stack operation::to_pay_key_hash_pattern(const short_hash& hash)
+operation_stack operation::to_pay_key_hash_pattern(const short_hash& hash)
 {
-    return operation::stack
+    return operation_stack
     {
         { opcode::dup, {} },
         { opcode::hash160, {} },
@@ -516,9 +516,9 @@ operation::stack operation::to_pay_key_hash_pattern(const short_hash& hash)
     };
 }
 
-operation::stack operation::to_pay_script_hash_pattern(const short_hash& hash)
+operation_stack operation::to_pay_script_hash_pattern(const short_hash& hash)
 {
-    return operation::stack
+    return operation_stack
     {
         { opcode::hash160, {} },
         { opcode::special, to_chunk(hash) },

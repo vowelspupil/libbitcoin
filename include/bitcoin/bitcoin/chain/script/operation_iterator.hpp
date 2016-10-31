@@ -29,10 +29,7 @@ namespace libbitcoin {
 namespace chain {
 
 class operation;
-
-class opstack : public std::vector<operation>
-{
-};
+class operation_stack;
 
 class BC_API operation_iterator
 {

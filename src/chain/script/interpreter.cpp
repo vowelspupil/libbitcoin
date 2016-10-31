@@ -706,7 +706,7 @@ static signature_parse_result op_check_sig_verify(evaluation_context& context,
     auto& distinguished = endorsement;
     distinguished.pop_back();
     ec_signature signature;
-    operation::stack ops;
+    operation_stack ops;
 
     if (strict && !parse_signature(signature, distinguished, true))
         return signature_parse_result::lax_encoding;
@@ -776,7 +776,7 @@ static signature_parse_result op_check_multisig_verify(
 
     // Due to a bug in bitcoind, read and discard an extra op/byte.
     context.stack.pop_back();
-    operation::stack ops;
+    operation_stack ops;
 
     const auto is_endorsement = [&sigs](const data_chunk& data)
     {

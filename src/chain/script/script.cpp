@@ -82,12 +82,12 @@ script::script(const script& other)
     // TODO: implement safe private accessor for conditional cache transfer.
 }
 
-script::script(const operation::stack& ops)
+script::script(const operation_stack& ops)
 {
     valid_ = from_stack(ops);
 }
 
-script::script(operation::stack&& ops)
+script::script(operation_stack&& ops)
 {
     valid_ = from_stack(ops);
 }
@@ -188,7 +188,7 @@ bool script::from_string(const std::string& mnemonic)
 
     // There is strictly one operation per string token.
     const auto tokens = split(mnemonic);
-    operation::stack ops;
+    operation_stack ops;
     ops.resize(tokens.size());
 
     // Create an op stack from the split tokens, one operation per token.
@@ -199,7 +199,7 @@ bool script::from_string(const std::string& mnemonic)
     return from_stack(ops);
 }
 
-bool script::from_stack(const operation::stack& ops)
+bool script::from_stack(const operation_stack& ops)
 {
     reset();
     valid_ = true;
@@ -216,7 +216,7 @@ bool script::from_stack(const operation::stack& ops)
 }
 
 // private/static
-bool script::stack_to_data(data_chunk& out, const operation::stack& ops)
+bool script::stack_to_data(data_chunk& out, const operation_stack& ops)
 {
     data_chunk data;
     data.reserve(serialized_size(ops));
@@ -237,7 +237,7 @@ bool script::stack_to_data(data_chunk& out, const operation::stack& ops)
 }
 
 // private/static
-size_t script::serialized_size(const operation::stack& ops)
+size_t script::serialized_size(const operation_stack& ops)
 {
     const auto op_size = [](size_t total, const operation& op)
     {
@@ -354,7 +354,7 @@ const data_chunk& script::bytes() const
     return bytes_;
 }
 
-const operation::stack& script::stack() const
+const operation_stack& script::stack() const
 {
     ///////////////////////////////////////////////////////////////////////////
     // Critical Section
@@ -521,7 +521,7 @@ static hash_digest sign_all(const transaction& tx, uint32_t input_index,
 
 static script strip_code_seperators(const script& script_code)
 {
-    operation::stack ops;
+    operation_stack ops;
 
     for (auto op = script_code.begin(); op != script_code.end(); ++op)
         if (op->code() != opcode::codeseparator)

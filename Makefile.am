@@ -359,6 +359,7 @@ include_bitcoin_bitcoin_chain_script_HEADERS = \
     include/bitcoin/bitcoin/chain/script/opcode.hpp \
     include/bitcoin/bitcoin/chain/script/operation.hpp \
     include/bitcoin/bitcoin/chain/script/operation_iterator.hpp \
+    include/bitcoin/bitcoin/chain/script/operation_stack.hpp \
     include/bitcoin/bitcoin/chain/script/rule_fork.hpp \
     include/bitcoin/bitcoin/chain/script/script.hpp \
     include/bitcoin/bitcoin/chain/script/script_pattern.hpp \
