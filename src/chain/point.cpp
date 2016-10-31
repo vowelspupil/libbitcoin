@@ -173,7 +173,7 @@ point_iterator point::begin() const
 
 point_iterator point::end() const
 {
-    return point_iterator(*this, true);
+    return point_iterator(*this, satoshi_fixed_size());
 }
 
 std::string point::to_string() const

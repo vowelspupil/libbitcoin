@@ -682,11 +682,10 @@ static bool op_hash256(evaluation_context& context)
 }
 
 static bool op_code_seperator(evaluation_context& context,
-    operation::const_iterator op)
+    const operation::const_iterator op)
 {
-    // TODO: Increment the iterator to skip past this op (needs + override).
     // Modify context.begin() for the next op_check_[multi_]sig_verify call.
-    context.reset(op);
+    context.reset(op + size_t{1});
     return true;
 }
 

@@ -22,61 +22,57 @@
 
 #include <cstddef>
 #include <iterator>
-#include <memory>
+#include <vector>
 #include <bitcoin/bitcoin/define.hpp>
-#include <bitcoin/bitcoin/utility/container_source.hpp>
-#include <bitcoin/bitcoin/utility/data.hpp>
-#include <bitcoin/bitcoin/utility/istream_reader.hpp>
 
 namespace libbitcoin {
 namespace chain {
 
 class operation;
 
+class opstack : public std::vector<operation>
+{
+};
+
 class BC_API operation_iterator
 {
 public:
-    typedef operation* pointer;
-    typedef operation& reference;
+    typedef const operation* pointer;
+    typedef const operation& reference;
     typedef operation value_type;
     typedef ptrdiff_t difference_type;
-    typedef std::forward_iterator_tag iterator_category;
+    typedef std::bidirectional_iterator_tag iterator_category;
 
     typedef operation_iterator iterator;
     typedef operation_iterator const_iterator;
 
-    // constructors
     operation_iterator();
-    operation_iterator(const data_chunk& value);
-    operation_iterator(const data_chunk& value, bool end);
-    operation_iterator(const data_chunk& value, size_t offset);
     operation_iterator(const operation_iterator& other);
+    operation_iterator(const opstack& value, size_t index = 0);
 
     operator bool() const;
 
-    // iterator methods
     reference operator*() const;
     pointer operator->() const;
 
-    bool operator==(const iterator& other) const;
-    bool operator!=(const iterator& other) const;
+    bool operator==(const operation_iterator& other) const;
+    bool operator!=(const operation_iterator& other) const;
+    operation_iterator operator+(const size_t value) const;
+    operation_iterator operator-(const size_t value) const;
 
-    iterator& operator++();
-    iterator operator++(int);
+    operation_iterator& operator++();
+    operation_iterator operator++(int);
+    operation_iterator& operator--();
+    operation_iterator operator--(int);
 
 protected:
     void increment();
+    void decrement();
 
 private:
-    const data_chunk empty_;
-    const data_chunk& bytes_;
-    data_source stream_;
-    istream_reader source_;
-    size_t offset_;
-
-    // This is a cache within the iterator.
-    // Pointer breaks declaration cycle.
-    std::shared_ptr<value_type> current_;
+    static const opstack empty_;
+    const opstack& stack_;
+    size_t current_;
 };
 
 } // namespace chain

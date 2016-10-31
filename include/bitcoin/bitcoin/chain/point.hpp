@@ -59,6 +59,7 @@ public:
     // Operators.
     //-------------------------------------------------------------------------
 
+    /// This class is move assignable and copy assignable.
     point& operator=(point&& other);
     point& operator=(const point& other);
 

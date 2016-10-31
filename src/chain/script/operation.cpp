@@ -151,18 +151,14 @@ bool operation::from_data(reader& source)
 {
     reset();
 
-    const auto byte = source.read_byte();
-    const auto size = read_data_size(byte, source);
-    static_assert(sizeof(size) == sizeof(uint32_t), "unexpected size");
-    code_ = static_cast<opcode>(byte);
+    code_ = static_cast<opcode>(source.read_byte());
+    const auto size = read_data_size(code_, source);
 
+    // It is slightly more performant to skip a zero byte read and assignment.
     if (size != 0)
-    {
-        code_ = opcode_from_size(size);
         data_ = source.read_bytes(size);
-    }
 
-    if (!source || data_.size() != size)
+    if (!source)
         reset();
 
     return valid_;
@@ -261,8 +257,13 @@ void operation::to_data(writer& sink) const
 // The removal of spaces inside of data is a compatability break with v2.
 std::string operation::to_string(uint32_t active_forks) const
 {
-    return data_.empty() ? opcode_to_string(code_, active_forks) :
-        "[" + encode_base16(data_) + "]";
+    if (!valid_)
+        return "<invalid>";
+
+    if (data_.empty())
+        return opcode_to_string(code_, active_forks);
+
+    return "[" + encode_base16(data_) + "]";
 }
 
 // Properties (size, accessors, cache).
@@ -316,11 +317,11 @@ void operation::set_data(const data_chunk& data)
 // static
 
 // private
-uint32_t operation::read_data_size(uint8_t byte, reader& source)
+uint32_t operation::read_data_size(opcode code, reader& source)
 {
     static constexpr auto op_75 = static_cast<uint8_t>(opcode::push_size_75);
 
-    switch (static_cast<opcode>(byte))
+    switch (code)
     {
         case opcode::push_one_size:
             return source.read_byte();
@@ -329,6 +330,7 @@ uint32_t operation::read_data_size(uint8_t byte, reader& source)
         case opcode::push_four_size:
             return source.read_4_bytes_little_endian();
         default:
+            const auto byte = static_cast<uint8_t>(code);
             return byte <= op_75 ? byte : 0;
     }
 }
@@ -534,6 +536,7 @@ bool operation::is_disabled() const
 
 bool operation::is_oversized() const
 {
+    // bit.ly/2eSDkOJ
     return data_.size() > max_push_data_size;
 }
 

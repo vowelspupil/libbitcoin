@@ -23,6 +23,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <istream>
+#include <memory>
 #include <string>
 #include <bitcoin/bitcoin/define.hpp>
 #include <bitcoin/bitcoin/error.hpp>
@@ -34,6 +35,7 @@
 #include <bitcoin/bitcoin/math/elliptic_curve.hpp>
 #include <bitcoin/bitcoin/utility/data.hpp>
 #include <bitcoin/bitcoin/utility/reader.hpp>
+#include <bitcoin/bitcoin/utility/thread.hpp>
 #include <bitcoin/bitcoin/utility/writer.hpp>
 
 namespace libbitcoin {
@@ -54,16 +56,15 @@ public:
     script(script&& other);
     script(const script& other);
 
-    script(data_chunk&& bytes);
-    script(const data_chunk& bytes);
-
-    // TODO: create ops cache.
     script(operation::stack&& ops);
     script(const operation::stack& ops);
+
+    script(const data_chunk& bytes, bool prefix);
 
     // Operators.
     //-------------------------------------------------------------------------
 
+    /// This class is move assignable and copy assignable.
     script& operator=(script&& other);
     script& operator=(const script& other);
 
@@ -83,10 +84,14 @@ public:
     bool from_data(reader& source, bool prefix);
 
     /// Deserialization invalidates the iterator.
-    bool from_string(const std::string& mnemonic);
     bool from_stack(const operation::stack& ops);
+    bool from_string(const std::string& mnemonic);
 
+    /// A script object is valid if the byte count matches the prefix.
     bool is_valid() const;
+
+    /// A script stack is valid if all push ops have the predicated size.
+    bool is_valid_stack() const;
 
     // Serialization.
     //-------------------------------------------------------------------------
@@ -96,7 +101,6 @@ public:
     void to_data(writer& sink, bool prefix) const;
 
     std::string to_string(uint32_t active_forks) const;
-    operation::stack to_stack() const;
 
     // Iteration.
     //-------------------------------------------------------------------------
@@ -111,10 +115,7 @@ public:
     uint64_t serialized_size(bool prefix) const;
 
     const data_chunk& bytes() const;
-
-    /// Assignment invalidates the iterator.
-    void set_bytes(data_chunk&& bytes);
-    void set_bytes(const data_chunk& bytes);
+    const operation::stack& stack() const;
 
     // Signing.
     //-------------------------------------------------------------------------
@@ -156,23 +157,23 @@ protected:
     bool is_push_only() const;
 
     /// Unspendable pattern (standard).
-    bool is_null_data_pattern(const operation::stack& ops) const;
+    bool is_null_data_pattern() const;
 
     /// Payment script patterns (standard).
-    bool is_pay_multisig_pattern(const operation::stack& ops) const;
-    bool is_pay_public_key_pattern(const operation::stack& ops) const;
-    bool is_pay_key_hash_pattern(const operation::stack& ops) const;
-    bool is_pay_script_hash_pattern(const operation::stack& ops) const;
+    bool is_pay_multisig_pattern() const;
+    bool is_pay_public_key_pattern() const;
+    bool is_pay_key_hash_pattern() const;
+    bool is_pay_script_hash_pattern() const;
 
     /// Signature script patterns (standard).
-    bool is_sign_multisig_pattern(const operation::stack& ops) const;
-    bool is_sign_public_key_pattern(const operation::stack& ops) const;
-    bool is_sign_key_hash_pattern(const operation::stack& ops) const;
-    bool is_sign_script_hash_pattern(const operation::stack& ops) const;
+    bool is_sign_multisig_pattern() const;
+    bool is_sign_public_key_pattern() const;
+    bool is_sign_key_hash_pattern() const;
+    bool is_sign_script_hash_pattern() const;
 
 private:
-    static size_t script_size(const operation::stack& ops);
-    static data_chunk to_bytes(const operation::stack& ops);
+    static size_t serialized_size(const operation::stack& ops);
+    static bool stack_to_data(data_chunk& out, const operation::stack& ops);
     static code pay_hash(const transaction& tx, uint32_t input_index,
         const script& input_script, evaluation_context& input_context);
 
@@ -180,6 +181,11 @@ private:
 
     data_chunk bytes_;
     bool valid_;
+
+    // These are protected by mutex.
+    mutable bool cached_;
+    mutable operation::stack stack_;
+    mutable upgrade_mutex mutex_;
 };
 
 } // namespace chain

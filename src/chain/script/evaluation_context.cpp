@@ -31,10 +31,10 @@
 namespace libbitcoin {
 namespace chain {
     
-// Fixed tuning parameters.
-static constexpr size_t stack_capactity = 42;
-static constexpr size_t alternate_capactity = 42;
-static constexpr size_t condition_capactity = 4;
+// Fixed tuning parameters, max_stack_size ensures no reallocation.
+static constexpr size_t stack_capactity = max_stack_size;
+static constexpr size_t alternate_capactity = max_stack_size;
+static constexpr size_t condition_capactity = max_stack_size;
 
 // Constructors.
 //-----------------------------------------------------------------------------
@@ -82,7 +82,7 @@ void evaluation_context::reset(operation::const_iterator instruction)
 
 inline bool overflow_op_count(size_t count)
 {
-    return count > op_counter_limit;
+    return count > max_counted_ops;
 }
 
 bool evaluation_context::update_op_count(const operation& op)
@@ -143,9 +143,9 @@ bool evaluation_context::is_short_circuited(const operation& op) const
     return !(operation::is_conditional(op.code()) || condition.succeeded());
 }
 
-// bit.ly/2cowHlP
 bool evaluation_context::is_stack_overflow() const
 {
+    // bit.ly/2cowHlP
     // Addition is safe due to script size validation.
     return stack.size() + alternate.size() > max_stack_size;
 }

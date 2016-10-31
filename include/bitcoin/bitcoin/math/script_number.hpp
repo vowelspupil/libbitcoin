@@ -80,10 +80,10 @@ public:
     int64_t int64() const;
 
     /// Arithmetic with a number (throws on overflow).
-    script_number operator+(const int64_t value) const;
-    script_number operator-(const int64_t value) const;
-    script_number& operator+=(const int64_t value);
-    script_number& operator-=(const int64_t value);
+    script_number operator+(int64_t value) const;
+    script_number operator-(int64_t value) const;
+    script_number& operator+=(int64_t value);
+    script_number& operator-=(int64_t value);
 
     /// Arithmetic with another script_number (throws on overflow).
     script_number operator+(const script_number& other) const;
@@ -98,12 +98,12 @@ public:
     script_number operator-() const;
 
     /// Comparison operators with a number.
-    bool operator==(const int64_t value) const;
-    bool operator!=(const int64_t value) const;
-    bool operator<=(const int64_t value) const;
-    bool operator<(const int64_t value) const;
-    bool operator>=(const int64_t value) const;
-    bool operator>(const int64_t value) const;
+    bool operator==(int64_t value) const;
+    bool operator!=(int64_t value) const;
+    bool operator<=(int64_t value) const;
+    bool operator<(int64_t value) const;
+    bool operator>=(int64_t value) const;
+    bool operator>(int64_t value) const;
 
     /// Comparison operators with another script_number.
     bool operator==(const script_number& other) const;

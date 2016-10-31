@@ -19,51 +19,49 @@
  */
 #include <bitcoin/bitcoin/chain/point_iterator.hpp>
 
-#include <bitcoin/bitcoin/constants.hpp>
+#include <cstdint>
 #include <bitcoin/bitcoin/chain/point.hpp>
-#include <bitcoin/bitcoin/utility/endian.hpp>
+#include <bitcoin/bitcoin/constants.hpp>
+////#include <bitcoin/bitcoin/utility/endian.hpp>
+#include <bitcoin/bitcoin/utility/assert.hpp>
 
 namespace libbitcoin {
 namespace chain {
 
-static constexpr uint8_t max_offset = hash_size + sizeof(uint32_t);
+static const auto point_size = static_cast<uint8_t>(
+    point::satoshi_fixed_size());
 
-point_iterator::point_iterator(const point& value)
-  : point_(value), offset_(0)
-{
-}
-
-point_iterator::point_iterator(const point& value, bool end)
-  : point_(value), offset_(end ? max_offset : 0)
-{
-}
-
-point_iterator::point_iterator(const point& value, uint8_t offset)
-  : point_(value), offset_(offset)
+point_iterator::point_iterator()
+  : point_iterator(empty_)
 {
 }
 
 point_iterator::point_iterator(const point_iterator& other)
-  : point_iterator(other.point_, other.offset_)
+  : point_iterator(other.point_, other.current_)
+{
+}
+
+point_iterator::point_iterator(const point& value, uint8_t index)
+  : point_(value), current_(index)
 {
 }
 
 point_iterator::operator bool() const
 {
-    return (offset_ < max_offset);
+    return current_ < point_size;
 }
 
 // private
 uint8_t point_iterator::current() const
 {
-    if (offset_ < hash_size)
-        return point_.hash()[offset_];
+    if (current_ < hash_size)
+        return point_.hash()[current_];
 
-    const auto position = offset_ - hash_size;
+    const auto position = current_ - hash_size;
+    BITCOIN_ASSERT_MSG(position < sizeof(uint32_t), "increment failure");
 
     // TODO: move this little-endian iterator into endian.hpp.
-    return position >= sizeof(uint32_t) ? 0 :
-        static_cast<uint8_t>(point_.index() >> (position * byte_bits));
+    return static_cast<uint8_t>(point_.index() >> (position * byte_bits));
 }
 
 point_iterator::reference point_iterator::operator*() const
@@ -76,14 +74,26 @@ point_iterator::pointer point_iterator::operator->() const
     return current();
 }
 
-bool point_iterator::operator==(const iterator& other) const
+bool point_iterator::operator==(const point_iterator& other) const
 {
-    return (&point_ == &other.point_) && (offset_ == other.offset_);
+    return (current_ == other.current_) && (&point_ == &other.point_);
 }
 
-bool point_iterator::operator!=(const iterator& other) const
+bool point_iterator::operator!=(const point_iterator& other) const
 {
     return !(*this == other);
+}
+
+point_iterator point_iterator::operator+(uint8_t value) const
+{
+    const auto position = current_ < point_size ? current_ + 1 : current_;
+    return point_iterator(point_, position);
+}
+
+point_iterator point_iterator::operator-(uint8_t value) const
+{
+    const auto position = current_ > 0 ? current_ - 1 : current_;
+    return point_iterator(point_, position);
 }
 
 point_iterator::iterator& point_iterator::operator++()
@@ -114,14 +124,14 @@ point_iterator::iterator point_iterator::operator--(int)
 
 void point_iterator::increment()
 {
-    if (offset_ < max_offset)
-        offset_++;
+    if (current_ < point_size)
+        current_++;
 }
 
 void point_iterator::decrement()
 {
-    if (offset_ > 0)
-        offset_--;
+    if (current_ > 0)
+        current_--;
 }
 
 } // namespace chain

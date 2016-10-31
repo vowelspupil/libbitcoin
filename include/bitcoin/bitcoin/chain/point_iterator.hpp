@@ -20,7 +20,6 @@
 #ifndef LIBBITCOIN_CHAIN_POINT_ITERATOR_HPP
 #define LIBBITCOIN_CHAIN_POINT_ITERATOR_HPP
 
-#include <cstddef>
 #include <cstdint>
 #include <iterator>
 #include <bitcoin/bitcoin/define.hpp>
@@ -42,25 +41,24 @@ public:
     typedef point_iterator iterator;
     typedef point_iterator const_iterator;
 
-    // constructors
-    point_iterator(const point& value);
-    point_iterator(const point& value, bool end);
-    point_iterator(const point& value, uint8_t offset);
+    point_iterator();
     point_iterator(const point_iterator& other);
+    point_iterator(const point& value, uint8_t index=0);
 
     operator bool() const;
 
-    // iterator methods
     reference operator*() const;
     pointer operator->() const;
 
-    bool operator==(const iterator& other) const;
-    bool operator!=(const iterator& other) const;
+    bool operator == (const point_iterator& other) const;
+    bool operator != (const point_iterator& other) const;
+    point_iterator operator+(const uint8_t value) const;
+    point_iterator operator-(const uint8_t value) const;
 
-    iterator& operator++();
-    iterator operator++(int);
-    iterator& operator--();
-    iterator operator--(int);
+    point_iterator& operator++();
+    point_iterator operator++(int);
+    point_iterator& operator--();
+    point_iterator operator--(int);
 
 protected:
     void increment();
@@ -69,8 +67,9 @@ protected:
 private:
     uint8_t current() const;
 
+    static const point empty_;
     const point& point_;
-    uint8_t offset_;
+    uint8_t current_;
 };
 
 } // namespace chain

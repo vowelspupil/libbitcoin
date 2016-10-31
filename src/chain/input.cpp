@@ -64,18 +64,18 @@ input::input(const output_point& previous_output, const chain::script& script,
 // Operators.
 //-----------------------------------------------------------------------------
 
-input& input::operator=(const input& other)
-{
-    previous_output_ = other.previous_output_;
-    script_ = other.script_;
-    sequence_ = other.sequence_;
-    return *this;
-}
-
 input& input::operator=(input&& other)
 {
     previous_output_ = std::move(other.previous_output_);
     script_ = std::move(other.script_);
+    sequence_ = other.sequence_;
+    return *this;
+}
+
+input& input::operator=(const input& other)
+{
+    previous_output_ = other.previous_output_;
+    script_ = other.script_;
     sequence_ = other.sequence_;
     return *this;
 }

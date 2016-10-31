@@ -176,32 +176,32 @@ int64_t script_number::int64() const
     return value_;
 }
 
-bool script_number::operator==(const int64_t value) const
+bool script_number::operator==(int64_t value) const
 {
     return value_ == value;
 }
 
-bool script_number::operator!=(const int64_t value) const
+bool script_number::operator!=(int64_t value) const
 {
     return value_ != value;
 }
 
-bool script_number::operator<=(const int64_t value) const
+bool script_number::operator<=(int64_t value) const
 {
     return value_ <= value;
 }
 
-bool script_number::operator<(const int64_t value) const
+bool script_number::operator<(int64_t value) const
 {
     return value_ < value;
 }
 
-bool script_number::operator>=(const int64_t value) const
+bool script_number::operator>=(int64_t value) const
 {
     return value_ >= value;
 }
 
-bool script_number::operator>(const int64_t value) const
+bool script_number::operator>(int64_t value) const
 {
     return value_ > value;
 }
@@ -236,7 +236,7 @@ bool script_number::operator>(const script_number& other) const
     return operator>(other.value_);
 }
 
-script_number script_number::operator+(const int64_t value) const
+script_number script_number::operator+(int64_t value) const
 {
     if ((value > 0 && (value_ >= max_int64 - value)) ||
         (value < 0 && (value_ <= min_int64 - value)))
@@ -247,7 +247,7 @@ script_number script_number::operator+(const int64_t value) const
     return script_number(value_ + value);
 }
 
-script_number script_number::operator-(const int64_t value) const
+script_number script_number::operator-(int64_t value) const
 {
     if ((value > 0 && (value_ <= min_int64 + value)) ||
         (value < 0 && (value_ >= max_int64 + value)))
@@ -281,7 +281,7 @@ script_number script_number::operator-() const
     return script_number(-value_);
 }
 
-script_number& script_number::operator+=(const int64_t value)
+script_number& script_number::operator+=(int64_t value)
 {
     if ((value > 0 && (value_ >= max_int64 - value)) ||
         (value < 0 && (value_ <= min_int64 - value)))
@@ -293,7 +293,7 @@ script_number& script_number::operator+=(const int64_t value)
     return *this;
 }
 
-script_number& script_number::operator-=(const int64_t value)
+script_number& script_number::operator-=(int64_t value)
 {
     if ((value > 0 && (value_ <= min_int64 + value)) ||
         (value < 0 && (value_ >= max_int64 + value)))

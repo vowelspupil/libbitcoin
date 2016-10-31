@@ -146,12 +146,10 @@ public:
 protected:
     operation(opcode code, data_chunk&& data, bool valid);
     operation(opcode code, const data_chunk& data, bool valid);
-
+    static uint32_t read_data_size(opcode code, reader& source);
     void reset();
 
 private:
-    static uint32_t read_data_size(uint8_t byte, reader& source);
-
     opcode code_;
     data_chunk data_;
     bool valid_;

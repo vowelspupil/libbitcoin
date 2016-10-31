@@ -110,11 +110,13 @@ transaction::transaction(transaction&& other)
   : transaction(other.version_, other.locktime_, std::move(other.inputs_),
       std::move(other.outputs_))
 {
+    // TODO: implement safe private accessor for conditional cache transfer.
 }
 
 transaction::transaction(const transaction& other)
   : transaction(other.version_, other.locktime_, other.inputs_, other.outputs_)
 {
+    // TODO: implement safe private accessor for conditional cache transfer.
 }
 
 transaction::transaction(transaction&& other, hash_digest&& hash)
@@ -132,15 +134,21 @@ transaction::transaction(const transaction& other, const hash_digest& hash)
 
 transaction::transaction(uint32_t version, uint32_t locktime,
     const input::list& inputs, const output::list& outputs)
-  : version_(version), locktime_(locktime), inputs_(inputs), outputs_(outputs),
+  : version_(version),
+    locktime_(locktime),
+    inputs_(inputs),
+    outputs_(outputs),
     validation{}
 {
 }
 
 transaction::transaction(uint32_t version, uint32_t locktime,
     input::list&& inputs, output::list&& outputs)
-  : version_(version), locktime_(locktime), inputs_(std::move(inputs)),
-    outputs_(std::move(outputs)), validation{}
+  : version_(version),
+    locktime_(locktime),
+    inputs_(std::move(inputs)),
+    outputs_(std::move(outputs)),
+    validation{}
 {
 }
 
@@ -149,20 +157,11 @@ transaction::transaction(uint32_t version, uint32_t locktime,
 
 transaction& transaction::operator=(transaction&& other)
 {
+    // TODO: implement safe private accessor for conditional cache transfer.
     version_ = other.version_;
     locktime_ = other.locktime_;
     inputs_ = std::move(other.inputs_);
     outputs_ = std::move(other.outputs_);
-    return *this;
-}
-
-// TODO: eliminate blockchain transaction copies and then delete this.
-transaction& transaction::operator=(const transaction& other)
-{
-    version_ = other.version_;
-    locktime_ = other.locktime_;
-    inputs_ = other.inputs_;
-    outputs_ = other.outputs_;
     return *this;
 }
 
