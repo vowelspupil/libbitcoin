@@ -39,6 +39,9 @@ class evaluation_context
 {
 public:
     typedef script_number number;
+    typedef data_stack::value_type value_type;
+    typedef operation::const_iterator op_iterator;
+    typedef data_stack::const_iterator stack_iterator;
 
     /// Constructors.
     evaluation_context(uint32_t flags);
@@ -46,21 +49,21 @@ public:
 
     /// Instructions.
     bool set_script(const script& script);
-    void set_jump(operation::const_iterator instruction);
+    void set_jump(op_iterator instruction);
 
     /// Operation count.
-    bool update_op_count(const operation& op);
+    bool update_operation_count(const operation& op);
     bool update_pubkey_count(int32_t multisig_pubkeys);
 
     /// Properties.
-    operation::const_iterator begin() const;
-    operation::const_iterator jump() const;
-    operation::const_iterator end() const;
+    op_iterator begin() const;
+    op_iterator jump() const;
+    op_iterator end() const;
     uint32_t flags() const;
 
     /// Stack info.
-    data_chunk& item(size_t index);
-    data_stack::iterator position(size_t index);
+    const value_type& item(size_t index) const;
+    stack_iterator position(size_t index) const;
     bool is_short_circuited(const operation& op) const;
     bool is_stack_overflow() const;
     bool stack_state() const;
@@ -73,7 +76,7 @@ public:
     bool pop(number& out_number, size_t maxiumum_size=max_number_size);
     bool pop_binary(number& first, number& second);
     bool pop_ternary(number& first, number& second, number& third);
-    bool pop_position(data_stack::iterator& out_position);
+    bool pop_position(stack_iterator& out_position);
 
     /// Stack push.
     void push(bool value);

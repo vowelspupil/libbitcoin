@@ -82,7 +82,6 @@
     <ClCompile Include="..\..\..\..\src\chain\script\interpreter.cpp" />
     <ClCompile Include="..\..\..\..\src\chain\script\opcode.cpp" />
     <ClCompile Include="..\..\..\..\src\chain\script\operation.cpp" />
-    <ClCompile Include="..\..\..\..\src\chain\script\operation_iterator.cpp" />
     <ClCompile Include="..\..\..\..\src\chain\script\operation_stack.cpp" />
     <ClCompile Include="..\..\..\..\src\chain\script\script.cpp" />
     <ClCompile Include="..\..\..\..\src\chain\transaction.cpp" />
@@ -225,7 +224,6 @@
     <ClInclude Include="..\..\..\..\include\bitcoin\bitcoin\chain\script\interpreter.hpp" />
     <ClInclude Include="..\..\..\..\include\bitcoin\bitcoin\chain\script\opcode.hpp" />
     <ClInclude Include="..\..\..\..\include\bitcoin\bitcoin\chain\script\operation.hpp" />
-    <ClInclude Include="..\..\..\..\include\bitcoin\bitcoin\chain\script\operation_iterator.hpp" />
     <ClInclude Include="..\..\..\..\include\bitcoin\bitcoin\chain\script\operation_stack.hpp" />
     <ClInclude Include="..\..\..\..\include\bitcoin\bitcoin\chain\script\rule_fork.hpp" />
     <ClInclude Include="..\..\..\..\include\bitcoin\bitcoin\chain\script\script.hpp" />

@@ -444,11 +444,6 @@ bool operation::is_counted() const
     return is_counted(code_);
 }
 
-bool operation::is_push() const
-{
-    return is_push(code_);
-}
-
 bool operation::is_positive() const
 {
     return is_positive(code_);

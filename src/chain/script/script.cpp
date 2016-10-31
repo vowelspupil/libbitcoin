@@ -617,31 +617,32 @@ bool script::is_enabled(uint32_t flags, rule_fork flag)
 
 script_pattern script::pattern() const
 {
-    if (is_null_data_pattern())
+    // The first stack access must be method-based to guarantee the cache.
+    if (is_null_data_pattern(stack()))
         return script_pattern::null_data;
 
-    if (is_pay_multisig_pattern())
+    if (is_pay_multisig_pattern(stack_))
         return script_pattern::pay_multisig;
 
-    if (is_pay_public_key_pattern())
+    if (is_pay_public_key_pattern(stack_))
         return script_pattern::pay_public_key;
 
-    if (is_pay_key_hash_pattern())
+    if (is_pay_key_hash_pattern(stack_))
         return script_pattern::pay_key_hash;
 
-    if (is_pay_script_hash_pattern())
+    if (is_pay_script_hash_pattern(stack_))
         return script_pattern::pay_script_hash;
 
-    if (is_sign_multisig_pattern())
+    if (is_sign_multisig_pattern(stack_))
         return script_pattern::sign_multisig;
 
-    if (is_sign_public_key_pattern())
+    if (is_sign_public_key_pattern(stack_))
         return script_pattern::sign_public_key;
 
-    if (is_sign_key_hash_pattern())
+    if (is_sign_key_hash_pattern(stack_))
         return script_pattern::sign_key_hash;
 
-    if (is_sign_script_hash_pattern())
+    if (is_sign_script_hash_pattern(stack_))
         return script_pattern::sign_script_hash;
 
     return script_pattern::non_standard;
@@ -669,7 +670,8 @@ size_t script::sigops(bool serialized_script) const
         {
             total++;
         }
-        else if (code == opcode::checkmultisig || code == opcode::checkmultisigverify)
+        else if (code == opcode::checkmultisig || 
+            code == opcode::checkmultisigverify)
         {
             total += multisig_or_default_sigops(serialized_script, preceding);
         }

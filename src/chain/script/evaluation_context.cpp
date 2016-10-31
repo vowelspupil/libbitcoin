@@ -74,24 +74,26 @@ bool evaluation_context::set_script(const script& script)
 
 void evaluation_context::set_jump(operation::const_iterator instruction)
 {
+    // The begin_ member could be overloaded for this since it is never reused.
+    // But the cost of the proper abstraction is just a few bytes.
     jump_ = instruction;
 }
 
 // Operation count.
 //-----------------------------------------------------------------------------
 
-inline bool overflow_op_count(size_t count)
+inline bool operation_overflow(size_t count)
 {
     return count > max_counted_ops;
 }
 
-bool evaluation_context::update_op_count(const operation& op)
+bool evaluation_context::update_operation_count(const operation& op)
 {
     // Addition is safe due to script size validation.
     if (operation::is_counted(op.code()))
         ++op_count_;
 
-    return !overflow_op_count(op_count_);
+    return !operation_overflow(op_count_);
 }
 
 bool evaluation_context::update_pubkey_count(int32_t multisig_pubkeys)
@@ -102,7 +104,7 @@ bool evaluation_context::update_pubkey_count(int32_t multisig_pubkeys)
 
     // Addition is safe due to script size validation.
     op_count_ += multisig_pubkeys;
-    return !overflow_op_count(op_count_);
+    return !operation_overflow(op_count_);
 }
 
 // Properties.
@@ -131,12 +133,12 @@ uint32_t evaluation_context::flags() const
 /// Stack info.
 //-----------------------------------------------------------------------------
 
-data_chunk& evaluation_context::item(size_t index)
+const data_stack::value_type& evaluation_context::item(size_t index) const
 {
     return *position(index);
 }
 
-data_stack::iterator evaluation_context::position(size_t index)
+data_stack::const_iterator evaluation_context::position(size_t index) const
 {
     // Subtracting 1 makes the stack indexes zero-based (unlike satoshi).
     BITCOIN_ASSERT(index < stack.size());
@@ -229,7 +231,7 @@ bool evaluation_context::pop_ternary(number& first, number& second,
 }
 
 // Determines if popped value is valid post-pop stack index and returns index.
-bool evaluation_context::pop_position(data_stack::iterator& out_position)
+bool evaluation_context::pop_position(data_stack::const_iterator& out_position)
 {
     int32_t index;
     if (!pop(index))
@@ -277,7 +279,10 @@ void evaluation_context::duplicate(size_t index)
 // pop1/pop2/push1/push2
 void evaluation_context::swap(size_t index_left, size_t index_right)
 {
-    std::swap(item(index_left), item(index_right));
+    // TODO: refactor to allow DRY without const_cast here.
+    std::swap(
+        const_cast<data_stack::value_type&>(item(index_left)),
+        const_cast<data_stack::value_type&>(item(index_right)));
 }
 
 } // namespace chain

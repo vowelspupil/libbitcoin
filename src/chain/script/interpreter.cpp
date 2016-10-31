@@ -893,6 +893,17 @@ static bool op_check_locktime_verify(evaluation_context& context,
 
 // Validation - run.
 //-----------------------------------------------------------------------------
+//_____________________________________________________________________________
+//
+// TODO:
+// Refactor context to allow simple: script.run(context)
+// * remove script from context and directly use script iterator for ops.
+// * keep jump on context.
+// * optionally capture tx/input_index on context (only required for sigs).
+// * expose context signature checker that invokes jump script on tx/input
+//   given inputs parsed from the current stack.
+// * fail signature check if there is no context.transaction/input_index.
+//_____________________________________________________________________________
 
 // See BIP16 for max_data_script_size.
 // The script paramter is NOT always tx.indexes[input_index].script.
@@ -907,7 +918,7 @@ bool interpreter::run(const transaction& tx, uint32_t input_index,
         if (op->is_oversized() || op->is_disabled())
             return false;
 
-        if (!context.update_op_count(*op))
+        if (!context.update_operation_count(*op))
             return false;
 
         // Reserved codes may be skipped (allowed) so can't handle prior.

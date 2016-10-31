@@ -41,14 +41,14 @@ bool conditional_stack::succeeded() const
     return std::all_of(stack_.begin(), stack_.end(), is_true);
 }
 
-void conditional_stack::clear()
-{
-    stack_.clear();
-}
-
 void conditional_stack::open(bool value)
 {
     stack_.push_back(value);
+}
+
+void conditional_stack::clear()
+{
+    stack_.clear();
 }
 
 void conditional_stack::negate()
