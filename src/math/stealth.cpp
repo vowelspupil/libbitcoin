@@ -104,7 +104,7 @@ bool create_stealth_data(data_chunk& out_stealth_data, ec_secret& out_secret,
         return false;
 
     // [ephemeral-public-key-hash:32][pad:0-44][nonce:4]
-    static const size_t max_pad_size = script::max_null_data_size -
+    static const size_t max_pad_size = max_null_data_size -
         hash_size - sizeof(uint32_t);
 
     // Derive our initial nonce and pad from the provided seed.

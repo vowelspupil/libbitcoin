@@ -153,7 +153,7 @@ bool is_sign_script_hash_pattern(const operation_stack& ops)
     
 operation_stack to_null_data_pattern(data_slice data)
 {
-    if (data.size() > script::max_null_data_size)
+    if (data.size() > max_null_data_size)
         return{};
 
     return operation_stack

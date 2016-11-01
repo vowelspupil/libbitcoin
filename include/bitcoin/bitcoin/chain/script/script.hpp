@@ -46,8 +46,6 @@ class BC_API transaction;
 class BC_API script
 {
 public:
-    static const size_t max_null_data_size;
-
     // Constructors.
     //-------------------------------------------------------------------------
 
