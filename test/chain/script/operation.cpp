@@ -35,30 +35,28 @@ BOOST_AUTO_TEST_CASE(operation__constructor_1__always__returns_default_initializ
 
 BOOST_AUTO_TEST_CASE(operation__constructor_2__valid_input__returns_input_initialized)
 {
-    const auto code = opcode::special;
     const auto data = to_chunk(base16_literal("000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"));
-    operation instance(code, data);
+    operation instance(data);
 
     BOOST_REQUIRE(instance.is_valid());
-    BOOST_REQUIRE(code == instance.code());
-    BOOST_REQUIRE(data == instance.data());
+    BOOST_REQUIRE(instance.code() == opcode::push_size_32);
+    BOOST_REQUIRE(instance.data() == data);
 }
 
 BOOST_AUTO_TEST_CASE(operation__constructor_3__valid_input__returns_input_initialized)
 {
-    const auto code = opcode::special;
     const auto data = to_chunk(base16_literal("000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"));
     auto dup_data = data;
-    operation instance(code, std::move(dup_data));
+    operation instance(std::move(dup_data));
 
     BOOST_REQUIRE(instance.is_valid());
-    BOOST_REQUIRE(code == instance.code());
-    BOOST_REQUIRE(data == instance.data());
+    BOOST_REQUIRE(instance.code() == opcode::push_size_32);
+    BOOST_REQUIRE(instance.data() == data);
 }
 
 BOOST_AUTO_TEST_CASE(operation__constructor_4__valid_input__returns_input_initialized)
 {
-    const operation expected(opcode::special, to_chunk(base16_literal("23156214")));
+    const operation expected(to_chunk(base16_literal("23156214")));
     operation instance(expected);
 
     BOOST_REQUIRE(instance.is_valid());
@@ -67,7 +65,7 @@ BOOST_AUTO_TEST_CASE(operation__constructor_4__valid_input__returns_input_initia
 
 BOOST_AUTO_TEST_CASE(operation__constructor_5__valid_input__returns_input_initialized)
 {
-    operation expected(opcode::special, to_chunk(base16_literal("23156214")));
+    operation expected(to_chunk(base16_literal("23156214")));
     operation instance(std::move(expected));
 
     BOOST_REQUIRE(instance.is_valid());
@@ -82,9 +80,8 @@ BOOST_AUTO_TEST_CASE(operation__from_data__insufficient_bytes__failure)
     BOOST_REQUIRE(!instance.is_valid());
 }
 
-BOOST_AUTO_TEST_CASE(operation__from_data__roundtrip_zero__success)
+BOOST_AUTO_TEST_CASE(operation__from_data__roundtrip_push_size_0__success)
 {
-    const auto code = opcode::zero;
     const auto data0 = to_chunk(base16_literal(""));
     const auto raw_operation = to_chunk(base16_literal("00"));
     operation instance;
@@ -97,13 +94,12 @@ BOOST_AUTO_TEST_CASE(operation__from_data__roundtrip_zero__success)
     BOOST_REQUIRE(duplicate.from_data(instance.to_data()));
     BOOST_REQUIRE(instance == duplicate);
 
-    BOOST_REQUIRE(code == instance.code());
-    BOOST_REQUIRE(data0 == instance.data());
+    BOOST_REQUIRE(instance.code() == opcode::push_size_0);
+    BOOST_REQUIRE(instance.data() == data0);
 }
 
-BOOST_AUTO_TEST_CASE(operation__from_data__roundtrip_special__success)
+BOOST_AUTO_TEST_CASE(operation__from_data__roundtrip_push_size_75__success)
 {
-    const auto code = opcode::special;
     const auto data75 = data_chunk(75, '.');
     const auto raw_operation = build_chunk({ base16_literal("4b"), data75 });
     operation instance;
@@ -116,13 +112,12 @@ BOOST_AUTO_TEST_CASE(operation__from_data__roundtrip_special__success)
     BOOST_REQUIRE(duplicate.from_data(instance.to_data()));
     BOOST_REQUIRE(instance == duplicate);
 
-    BOOST_REQUIRE(code == instance.code());
-    BOOST_REQUIRE(data75 == instance.data());
+    BOOST_REQUIRE(instance.code() == opcode::push_size_75);
+    BOOST_REQUIRE(instance.data() == data75);
 }
 
-BOOST_AUTO_TEST_CASE(operation__from_data__roundtrip_push_size_1__success)
+BOOST_AUTO_TEST_CASE(operation__from_data__roundtrip_push_one_size__success)
 {
-    const auto code = opcode::push_size_1;
     const auto data255 = data_chunk(0xff, '.');
     const auto raw_operation = build_chunk({ base16_literal("4c" "ff"), data255 });
     operation instance;
@@ -135,14 +130,12 @@ BOOST_AUTO_TEST_CASE(operation__from_data__roundtrip_push_size_1__success)
     BOOST_REQUIRE(duplicate.from_data(instance.to_data()));
     BOOST_REQUIRE(instance == duplicate);
 
-    // opcode::special is a sentinel code, the actual code is the size.
-    BOOST_REQUIRE(code == instance.code());
-    BOOST_REQUIRE(data255 == instance.data());
+    BOOST_REQUIRE(instance.code() == opcode::push_one_size);
+    BOOST_REQUIRE(instance.data() == data255);
 }
 
-BOOST_AUTO_TEST_CASE(operation__from_data__roundtrip_push_size_2__success)
+BOOST_AUTO_TEST_CASE(operation__from_data__roundtrip_push_two_size__success)
 {
-    const auto code = opcode::push_size_2;
     const auto data65535 = data_chunk(0xffff, '.');
     const auto raw_operation = build_chunk({ base16_literal("4d" "ffff"), data65535 });
     operation instance;
@@ -155,14 +148,12 @@ BOOST_AUTO_TEST_CASE(operation__from_data__roundtrip_push_size_2__success)
     BOOST_REQUIRE(duplicate.from_data(instance.to_data()));
     BOOST_REQUIRE(instance == duplicate);
 
-    // opcode::special is a sentinel code, the actual code is the size.
-    BOOST_REQUIRE(code == instance.code());
-    BOOST_REQUIRE(data65535 == instance.data());
+    BOOST_REQUIRE(instance.code() == opcode::push_two_size);
+    BOOST_REQUIRE(instance.data() == data65535);
 }
 
-BOOST_AUTO_TEST_CASE(operation__from_data__roundtrip_push_size_4__success)
+BOOST_AUTO_TEST_CASE(operation__from_data__roundtrip_push_four_size__success)
 {
-    const auto code = opcode::push_size_4;
     const auto data65536 = data_chunk(0x00010000, '.');
     const auto raw_operation = build_chunk({ base16_literal("4e" "00000100"), data65536 });
     operation instance;
@@ -170,11 +161,13 @@ BOOST_AUTO_TEST_CASE(operation__from_data__roundtrip_push_size_4__success)
     BOOST_REQUIRE(instance.from_data(raw_operation));
     BOOST_REQUIRE(instance.is_valid());
     BOOST_REQUIRE(raw_operation == instance.to_data());
+
     operation duplicate;
     BOOST_REQUIRE(duplicate.from_data(instance.to_data()));
     BOOST_REQUIRE(instance == duplicate);
-    BOOST_REQUIRE(code == instance.code());
-    BOOST_REQUIRE(data65536 == instance.data());
+
+    BOOST_REQUIRE(instance.code() == opcode::push_four_size);
+    BOOST_REQUIRE(instance.data() == data65536);
 }
 
 BOOST_AUTO_TEST_CASE(operation__factory_from_data_1__roundtrip__success)
@@ -209,11 +202,11 @@ BOOST_AUTO_TEST_CASE(operation__factory_from_data_3__roundtrip__success)
 
 BOOST_AUTO_TEST_CASE(operation__code__roundtrip__success)
 {
-    const auto value = opcode::special;
+    const auto value = opcode::push_size_42;
     operation instance;
-    BOOST_REQUIRE(value != instance.code());
+    BOOST_REQUIRE(instance.code() != value);
     instance.set_code(value);
-    BOOST_REQUIRE(value == instance.code());
+    BOOST_REQUIRE(instance.code() == value);
 }
 
 BOOST_AUTO_TEST_CASE(operation__data_setter_1__roundtrip__success)

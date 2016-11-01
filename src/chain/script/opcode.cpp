@@ -21,6 +21,7 @@
 
 #include <cstdint>
 #include <string>
+#include <boost/algorithm/string.hpp>
 #include <bitcoin/bitcoin/chain/script/script.hpp>
 #include <bitcoin/bitcoin/constants.hpp>
 #include <bitcoin/bitcoin/formats/base_16.hpp>
@@ -29,10 +30,10 @@ namespace libbitcoin {
 namespace chain {
 
 #define RETURN_IF_OPCODE(text, code) \
-if (value == text) { out_code = opcode::code; return true; }
+if (normal == text) { out_code = opcode::code; return true; }
 
 #define RETURN_IF_OPCODE_OR_ALIAS(text, alias, code) \
-if (value == text || value == alias) { out_code = opcode::code; return true; }
+if (normal == text || value == alias) { out_code = opcode::code; return true; }
 
 // TODO: convert this to a static bimap (with exception for nop2).
 std::string opcode_to_string(opcode value, uint32_t active_forks)
@@ -405,6 +406,9 @@ std::string opcode_to_string(opcode value, uint32_t active_forks)
 // TODO: convert this to a static bimap.
 bool opcode_from_string(opcode& out_code, const std::string& value)
 {
+    // Normalize to ASCII lower case.
+    const auto normal = boost::algorithm::to_lower_copy(value);
+
     RETURN_IF_OPCODE("zero", push_size_0);
     RETURN_IF_OPCODE("push_0", push_size_0);
     RETURN_IF_OPCODE("push_1", push_size_1);
@@ -662,6 +666,8 @@ bool opcode_from_string(opcode& out_code, const std::string& value)
     RETURN_IF_OPCODE("reserved_253", reserved_253);
     RETURN_IF_OPCODE("reserved_254", reserved_254);
     RETURN_IF_OPCODE("reserved_255", reserved_255);
+
+    // Any hexadecimal byte will parse (hex prefix not lowered).
     return opcode_from_hexadecimal(out_code, value);
 }
 

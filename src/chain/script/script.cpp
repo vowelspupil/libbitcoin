@@ -327,16 +327,43 @@ std::string script::to_string(uint32_t active_forks) const
 
 // Iteration.
 //-----------------------------------------------------------------------------
+// The first stack access must be method-based to guarantee the cache.
+
+bool script::empty() const
+{
+    return stack().empty();
+}
+
+size_t script::size() const
+{
+    return stack().size();
+}
+
+const operation& script::front() const
+{
+    BITCOIN_ASSERT(!stack().empty());
+    return stack().front();
+}
+
+const operation& script::back() const
+{
+    BITCOIN_ASSERT(!stack().empty());
+    return stack().back();
+}
+
+const operation& script::operator[](std::size_t index) const
+{
+    BITCOIN_ASSERT(index < stack().size());
+    return stack()[index];
+}
 
 operation::const_iterator script::begin() const
 {
-    // The first stack access must be method-based to guarantee the cache.
     return stack().begin();
 }
 
 operation::const_iterator script::end() const
 {
-    // The first stack access must be method-based to guarantee the cache.
     return stack().end();
 }
 
@@ -358,11 +385,13 @@ uint64_t script::serialized_size(bool prefix) const
     return size;
 }
 
+// protected
 const data_chunk& script::bytes() const
 {
     return bytes_;
 }
 
+// protected
 const operation_stack& script::stack() const
 {
     ///////////////////////////////////////////////////////////////////////////
@@ -390,7 +419,7 @@ const operation_stack& script::stack() const
     // If an op fails it is placed on the stack and the loop terminates.
     // To validate the ops the caller must test the last op.is_valid().
     // This is not necessary during script validation as it is autmoatic.
-    while (source)
+    while (!source.is_exhausted())
     {
         op.from_data(source);
         stack_.push_back(std::move(op));
@@ -549,21 +578,23 @@ hash_digest script::generate_signature_hash(const transaction& tx,
     if (input_index >= tx.inputs().size() || 
         (input_index >= tx.outputs().size() && single))
     {
+        //*********************************************************************
         // Wacky satoshi consensus behavior we must perpetuate.
+        //*********************************************************************
         return one_hash;
     }
 
+    //*************************************************************************
     // More wacky satoshi consensus behavior we must perpetuate.
+    //*************************************************************************
     const auto stripped = strip_code_seperators(script_code);
 
     switch (to_sighash_enum(sighash_type))
     {
         case sighash_none:
             return sign_none(tx, input_index, stripped, sighash_type, any);
-
         case sighash_single:
             return sign_single(tx, input_index, stripped, sighash_type, any);
-
         default:
         case sighash_all:
             return sign_all(tx, input_index, stripped, sighash_type, any);
@@ -613,6 +644,11 @@ bool script::create_endorsement(endorsement& out, const ec_secret& secret,
 bool script::is_enabled(uint32_t flags, rule_fork flag)
 {
     return (flag & flags) != 0;
+}
+
+bool script::is_push_data_only() const
+{
+    return is_push_only(stack());
 }
 
 script_pattern script::pattern() const
@@ -693,7 +729,7 @@ size_t script::pay_script_hash_sigops(const script& prevout) const
     // The first stack access must be method-based to guarantee the cache.
     // Conditions added by EKV on 2016.09.15 for safety and BIP16 consistency.
     // Only push data operations allowed in script, so no signature increment.
-    if (stack().empty() || !is_push_only())
+    if (stack().empty() || !is_push_data_only())
         return 0;
 
     script eval;
@@ -767,7 +803,7 @@ code script::pay_hash(const transaction& tx, uint32_t input_index,
     const script& input_script, evaluation_context& input_context)
 {
     // Only push data operations allowed in script.
-    if (!input_script.is_push_only())
+    if (!input_script.is_push_data_only())
         return error::validate_inputs_failed;
 
     // Use the last stack item as the serialized script.

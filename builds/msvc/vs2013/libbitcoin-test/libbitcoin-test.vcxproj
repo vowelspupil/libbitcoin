@@ -87,7 +87,6 @@
     <ClCompile Include="..\..\..\..\test\chain\script.cpp" />
     <ClCompile Include="..\..\..\..\test\chain\script\opcode.cpp" />
     <ClCompile Include="..\..\..\..\test\chain\script\operation.cpp" />
-    <ClCompile Include="..\..\..\..\test\chain\script\operation_iterator.cpp" />
     <ClCompile Include="..\..\..\..\test\chain\transaction.cpp" />
     <ClCompile Include="..\..\..\..\test\config\authority.cpp" />
     <ClCompile Include="..\..\..\..\test\config\base58.cpp" />

@@ -35,6 +35,8 @@
 #include <bitcoin/bitcoin/math/hash.hpp>
 #include <bitcoin/bitcoin/math/script_number.hpp>
 #include <bitcoin/bitcoin/utility/assert.hpp>
+#include <bitcoin/bitcoin/utility/container_source.hpp>
+#include <bitcoin/bitcoin/utility/istream_reader.hpp>
 
 namespace libbitcoin {
 namespace chain {
@@ -46,31 +48,59 @@ enum class signature_parse_result
     lax_encoding
 };
 
-// Utility.
-//-----------------------------------------------------------------------------
-// private
-
-// TODO: move to script.
-static script strip_endorsements(const evaluation_context& context,
+//*****************************************************************************
+// CONSENSUS: Satoshi has a bug in FindAndDelete that we do not reproduce.
+// The find_and_delete function emulates it and can be used in place of this.
+//*****************************************************************************
+static script create_subscript(const evaluation_context& context,
     const data_stack& endorsements)
 {
     operation_stack ops;
     const auto& end = endorsements.end();
     const auto& begin = endorsements.begin();
-    const auto is_endorsement = [&begin, &end](const data_chunk& data)
+
+    const auto is_endorsement = [&](const data_chunk& data)
     {
         return std::find(begin, end, data) != end;
     };
 
-    //*************************************************************************
-    // CONSENSUS: Satoshi has a bug in FindAndDelete that we do not reproduce.
-    // Its endorsement removal will strip matching operations, not just data.
-    //*************************************************************************
+    // Create an operation stack for the subscript starting at jump register.
+    // Remove matching endorsements from the subscript (optimization).
     for (auto op = context.jump(); op != context.end(); ++op)
         if (!is_endorsement(op->data()))
             ops.push_back(*op);
 
+    // Generate a script from the remaining operations.
     return script(std::move(ops));
+}
+
+static script find_and_delete(const evaluation_context& context,
+    const data_stack& endorsements)
+{
+    operation_stack ops;
+
+    // Create an operation stack for the subscript starting at jump register.
+    for (auto pc = context.jump(); pc != context.end(); ++pc)
+        ops.push_back(*pc);
+
+    // Serialize the operations as an unprefixed script buffer.
+    auto buffer = script(std::move(ops)).to_data(false);
+
+    // Evaluate the full buffer for each endorsement.
+    operation op;
+    data_source stream(buffer);
+    istream_reader source(stream);
+
+    // TODO:
+    // If an opcode fails to parse just move on to the next endorsement.
+    do
+    {
+        op.from_data(source);
+    }
+    while (!source.is_exhausted());
+
+    // Generate a script from the mutated buffer, regardless of failures.
+    return script(std::move(buffer), false);
 }
 
 // Operations.
@@ -662,7 +692,7 @@ static bool op_ripemd160(evaluation_context& context)
     if (context.stack.empty())
         return false;
 
-    // TODO: move buffer.
+    // TODO: move array buffer into vector.
     const auto hash = ripemd160_hash(context.pop());
     context.stack.push_back(to_chunk(hash));
     return true;
@@ -673,7 +703,7 @@ static bool op_sha1(evaluation_context& context)
     if (context.stack.empty())
         return false;
 
-    // TODO: move buffer.
+    // TODO: move array buffer into vector.
     context.stack.push_back(to_chunk(sha1_hash(context.pop())));
     return true;
 }
@@ -683,7 +713,7 @@ static bool op_sha256(evaluation_context& context)
     if (context.stack.empty())
         return false;
 
-    // TODO: move buffer.
+    // TODO: move array buffer into vector.
     context.stack.push_back(to_chunk(sha256_hash(context.pop())));
     return true;
 }
@@ -693,7 +723,7 @@ static bool op_hash160(evaluation_context& context)
     if (context.stack.empty())
         return false;
 
-    // TODO: move buffer.
+    // TODO: move array buffer into vector.
     context.stack.push_back(to_chunk(bitcoin_short_hash(context.pop())));
     return true;
 }
@@ -703,16 +733,16 @@ static bool op_hash256(evaluation_context& context)
     if (context.stack.empty())
         return false;
 
-    // TODO: move buffer.
+    // TODO: move array buffer into vector.
     context.stack.push_back(to_chunk(bitcoin_hash(context.pop())));
     return true;
 }
 
 static bool op_code_seperator(evaluation_context& context,
-    const operation::const_iterator op)
+    const operation::const_iterator program_counter)
 {
     // Modify context.begin() for the next op_check_[multi_]sig_verify call.
-    context.set_jump(op + 1);
+    context.set_jump(program_counter + 1);
     return true;
 }
 
@@ -729,18 +759,20 @@ static signature_parse_result op_check_sig_verify(evaluation_context& context,
         return signature_parse_result::invalid;
 
     auto strict = script::is_enabled(context.flags(), rule_fork::bip66_rule);
+
+    // Parse sighash_type and distinguished from endorsement.
     const auto sighash_type = endorsement.back();
     auto& distinguished = endorsement;
     distinguished.pop_back();
+
+    // Parse DER signature into an EC signature.
     ec_signature signature;
+    if (!parse_signature(signature, distinguished, strict))
+        return strict ? signature_parse_result::lax_encoding :
+            signature_parse_result::invalid;
 
-    if (strict && !parse_signature(signature, distinguished, true))
-        return signature_parse_result::lax_encoding;
-
-    if (!strict && !parse_signature(signature, distinguished, false))
-        return signature_parse_result::invalid;
-
-    const auto script_code = strip_endorsements(context, { endorsement });
+    // Create a subscript with endorsements stripped.
+    const auto script_code = create_subscript(context, { endorsement });
 
     return script::check_signature(signature, sighash_type, pubkey,
         script_code, tx, input_index) ? signature_parse_result::valid :
@@ -794,29 +826,34 @@ static signature_parse_result op_check_multisig_verify(
     if (context.stack.empty())
         return signature_parse_result::invalid;
 
-    // Due to a bug in bitcoind, read and discard an extra op/byte.
-    context.stack.pop_back();
-    
+    //*****************************************************************************
+    // CONSENSUS: Due to a satoshi bug, read and discard an extra op/byte.
+    // This is a source of malleability since the value is ignored.
+    //*****************************************************************************
+    context.pop();
+
+    // Create a subscript with endorsements stripped.
+    const auto script_code = create_subscript(context, endorsements);
+    auto strict = script::is_enabled(context.flags(), rule_fork::bip66_rule);
+    auto pubkey_iterator = pubkeys.begin();
+
     // The exact number of signatures are required and must be in order.
     // One key can validate more than one script. So we always advance 
     // until we exhaust either pubkeys (fail) or signatures (pass).
-    auto pubkey_iterator = pubkeys.begin();
-    const auto script_code = strip_endorsements(context, endorsements);
-    auto strict = script::is_enabled(context.flags(), rule_fork::bip66_rule);
-
     for (const auto& endorsement: endorsements)
     {
         if (endorsement.empty())
             return signature_parse_result::invalid;
 
+        // Parse sighash_type and distinguished from endorsement.
         const auto sighash_type = endorsement.back();
         auto distinguished = endorsement;
         distinguished.pop_back();
-        ec_signature signature;
 
+        // Parse DER signature into an EC signature.
+        ec_signature signature;
         if (!parse_signature(signature, distinguished, strict))
-            return strict ?
-                signature_parse_result::lax_encoding :
+            return strict ? signature_parse_result::lax_encoding :
                 signature_parse_result::invalid;
 
         while (true)
@@ -868,8 +905,7 @@ static bool op_check_locktime_verify(evaluation_context& context,
         return false;
 
     // BIP65: the stack is empty.
-    // BIP65: We extend the (signed) CLTV script number range to 5 bytes in
-    // order to reach the domain of the (unsigned) tx.locktime field.
+    // BIP65: extend the (signed) CLTV script number range to 5 bytes.
     script_number number;
     if (!context.pop(number, max_cltv_number_size))
         return false;
@@ -913,20 +949,20 @@ bool interpreter::run(const transaction& tx, uint32_t input_index,
     if (!context.set_script(script))
         return false;
 
-    for (auto op = context.begin(); op != context.end(); ++op)
+    for (auto pc = context.begin(); pc != context.end(); ++pc)
     {
-        if (op->is_oversized() || op->is_disabled())
+        if (pc->is_oversized() || pc->is_disabled())
             return false;
 
-        if (!context.update_operation_count(*op))
+        if (!context.update_operation_count(*pc))
             return false;
 
         // Reserved codes may be skipped (allowed) so can't handle prior.
         // Disabled codes can't be skipped so they must be handled prior.
-        if (context.is_short_circuited(*op))
+        if (context.is_short_circuited(*pc))
             continue;
 
-        if (!run_op(op, tx, input_index, script, context))
+        if (!run_op(pc, tx, input_index, script, context))
             return false;
 
         if (context.is_stack_overflow())
@@ -937,11 +973,11 @@ bool interpreter::run(const transaction& tx, uint32_t input_index,
     return context.condition.closed();
 }
 
-bool interpreter::run_op(operation::const_iterator op, const transaction& tx,
+bool interpreter::run_op(operation::const_iterator pc, const transaction& tx,
     uint32_t input_index, const script& script, evaluation_context& context)
 {
-    const auto code = op->code();
-    const auto data = op->data();
+    const auto code = pc->code();
+    const auto data = pc->data();
     BITCOIN_ASSERT(data.empty() || operation::is_push(code));
 
     switch (code)
@@ -1022,7 +1058,7 @@ bool interpreter::run_op(operation::const_iterator op, const transaction& tx,
         case opcode::push_size_73:
         case opcode::push_size_74:
         case opcode::push_size_75:
-            return op_push_size(context, *op);
+            return op_push_size(context, *pc);
         case opcode::push_one_size:
             return op_push_size(context, data, max_uint8);
         case opcode::push_two_size:
@@ -1214,7 +1250,7 @@ bool interpreter::run_op(operation::const_iterator op, const transaction& tx,
         case opcode::hash256:
             return op_hash256(context);
         case opcode::codeseparator:
-            return op_code_seperator(context, op);
+            return op_code_seperator(context, pc);
         case opcode::checksig:
             return op_check_sig(context, script, tx, input_index);
         case opcode::checksigverify:

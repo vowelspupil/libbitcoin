@@ -324,8 +324,5 @@
     <ClCompile Include="..\..\..\..\test\chain\script\opcode.cpp">
       <Filter>src\chain\script</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\test\chain\script\operation_iterator.cpp">
-      <Filter>src\chain\script</Filter>
-    </ClCompile>
   </ItemGroup>
 </Project>

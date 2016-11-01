@@ -21,8 +21,6 @@
 #define LIBBITCOIN_CHAIN_OPERATION_STACK_HPP
 
 #include <cstdint>
-////#include <initializer_list>
-#include <vector>
 #include <bitcoin/bitcoin/chain/script/operation.hpp>
 #include <bitcoin/bitcoin/define.hpp>
 #include <bitcoin/bitcoin/utility/data.hpp>
@@ -61,23 +59,6 @@ BC_API operation_stack to_pay_multisig_pattern(uint8_t signatures,
     const point_list& points);
 BC_API operation_stack to_pay_multisig_pattern(uint8_t signatures,
     const data_stack& points);
-
-    // Vector: move to script.
-    //-------------------------------------------------------------------------
-
-    ////void clear();
-    ////bool empty() const;
-    ////size_t size() const;
-    ////void shrink_to_fit();
-    ////void resize(size_t size);
-    ////void reserve(size_t size);
-    ////const operation& back() const;
-    ////const operation& front() const;
-    ////void push_back(operation&& op);
-    ////void push_back(const operation& op);
-
-    ////operation& operator[](std::size_t index);
-    ////const operation& operator[](std::size_t index) const;
 
 } // end chain
 } // end libbitcoin

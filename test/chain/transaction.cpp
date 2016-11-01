@@ -604,13 +604,12 @@ BOOST_AUTO_TEST_CASE(transaction__is_oversized_coinbase__script_size_below_min__
 
 BOOST_AUTO_TEST_CASE(transaction__is_oversized_coinbase__script_size_above_max__returns_true)
 {
-    static const auto parse_mode = chain::script::parse_mode::raw_data;
     chain::transaction instance;
     auto& inputs = instance.inputs();
     inputs.emplace_back();
     inputs.back().previous_output().set_index(chain::point::null_index);
     inputs.back().previous_output().set_hash(null_hash);
-    BOOST_REQUIRE(inputs.back().script().from_data(data_chunk(max_coinbase_size + 10), false, parse_mode));
+    BOOST_REQUIRE(inputs.back().script().from_data(data_chunk(max_coinbase_size + 10), false));
     BOOST_REQUIRE(instance.is_coinbase());
     BOOST_REQUIRE(inputs.back().script().serialized_size(false) > max_coinbase_size);
     BOOST_REQUIRE(instance.is_oversized_coinbase());
@@ -618,13 +617,12 @@ BOOST_AUTO_TEST_CASE(transaction__is_oversized_coinbase__script_size_above_max__
 
 BOOST_AUTO_TEST_CASE(transaction__is_oversized_coinbase__script_size_within_bounds__returns_false)
 {
-    static const auto parse_mode = chain::script::parse_mode::raw_data;
     chain::transaction instance;
     auto& inputs = instance.inputs();
     inputs.emplace_back();
     inputs.back().previous_output().set_index(chain::point::null_index);
     inputs.back().previous_output().set_hash(null_hash);
-    BOOST_REQUIRE(inputs.back().script().from_data(data_chunk(50), false, parse_mode));
+    BOOST_REQUIRE(inputs.back().script().from_data(data_chunk(50), false));
     BOOST_REQUIRE(instance.is_coinbase());
     BOOST_REQUIRE(inputs.back().script().serialized_size(false) >= min_coinbase_size);
     BOOST_REQUIRE(inputs.back().script().serialized_size(false) <= max_coinbase_size);
@@ -973,8 +971,7 @@ BOOST_AUTO_TEST_CASE(transaction__operator_boolean_not_equals__differs__returns_
 
 BOOST_AUTO_TEST_CASE(transaction__hash__block320670__success)
 {
-    // This is a garbage output script containing a collision with the
-    // opcode::raw_data extended opcode (nonstandard, should be removed).
+    // This is a garbage script that collides with the former opcode::raw_data sentinel.
     static const auto expected = hash_literal(TX7_HASH);
     static const auto data = to_chunk(base16_literal(TX7));
     chain::transaction instance;

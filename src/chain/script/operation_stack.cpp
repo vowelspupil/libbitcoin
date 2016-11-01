@@ -19,9 +19,9 @@
  */
 #include <bitcoin/bitcoin/chain/script/operation_stack.hpp>
 
+#include <algorithm>
 #include <cstddef>
-#include <initializer_list>
-#include <utility>
+#include <cstdint>
 #include <bitcoin/bitcoin/chain/script/opcode.hpp>
 #include <bitcoin/bitcoin/chain/script/script.hpp>
 #include <bitcoin/bitcoin/constants.hpp>
@@ -243,69 +243,6 @@ operation_stack to_pay_multisig_pattern(uint8_t signatures,
     ops.push_back({ opcode::checkmultisig });
     return ops;
 }
-
-// Vector.
-//-----------------------------------------------------------------------------
-
-////operation& operation_stack::operator[](std::size_t index)
-////{
-////    return stack_[index];
-////}
-////
-////const operation& operation_stack::operator[](std::size_t index) const
-////{
-////    return stack_[index];
-////}
-////
-////void operation_stack::clear()
-////{
-////    stack_.clear();
-////}
-////
-////bool operation_stack::empty() const
-////{
-////    return stack_.empty();
-////}
-////
-////size_t operation_stack::size() const
-////{
-////    return stack_.size();
-////}
-////
-////void operation_stack::shrink_to_fit()
-////{
-////    stack_.shrink_to_fit();
-////}
-////
-////void operation_stack::resize(size_t size)
-////{
-////    stack_.resize(size);
-////}
-////
-////void operation_stack::reserve(size_t size)
-////{
-////    stack_.reserve(size);
-////}
-////
-////const operation& operation_stack::back() const
-////{
-////    return stack_.back();
-////}
-////
-////const operation& operation_stack::front() const
-////{
-////    return stack_.front();
-////}
-////
-////void operation_stack::push_back(operation&& op)
-////{
-////    stack_.push_back(std::move(op));
-////}
-////
-////void operation_stack::push_back(const operation& op)
-////{
-////    stack_.push_back(op);
-////}
 
 } // namespace chain
 } // namespace libbitcoin

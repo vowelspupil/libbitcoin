@@ -106,17 +106,19 @@ public:
     // Iteration.
     //-------------------------------------------------------------------------
 
+    bool empty() const;
+    size_t size() const;
+    const operation& front() const;
+    const operation& back() const;
     operation::const_iterator begin() const;
     operation::const_iterator end() const;
+    const operation& operator[](std::size_t index) const;
 
     // Properties (size, accessors, cache).
     //-------------------------------------------------------------------------
 
     uint64_t satoshi_content_size() const;
     uint64_t serialized_size(bool prefix) const;
-
-    const data_chunk& bytes() const;
-    const operation_stack& stack() const;
 
     // Signing.
     //-------------------------------------------------------------------------
@@ -153,9 +155,9 @@ public:
 
 protected:
     void reset();
-
-    /// Used in all signature script patterns.
-    bool is_push_only() const;
+    bool is_push_data_only() const;
+    const data_chunk& bytes() const;
+    const operation_stack& stack() const;
 
 private:
     static size_t serialized_size(const operation_stack& ops);

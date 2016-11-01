@@ -56,16 +56,10 @@ bool is_quoted_string(const std::string& token)
     return boost::starts_with(token, "'") && boost::ends_with(token, "'");
 }
 
-opcode token_to_opcode(const std::string& token)
-{
-    std::string lower_token = token;
-    boost::algorithm::to_lower(lower_token);
-    return opcode_from_string(lower_token);
-}
-
 bool is_opcode(const std::string& token)
 {
-    return token_to_opcode(token) != opcode::bad_operation;
+    opcode out_code;
+    return opcode_from_string(out_code, token);
 }
 
 bool is_opx(int64_t value)
@@ -79,7 +73,7 @@ void push_literal(data_chunk& raw_script, int64_t value)
     switch (value)
     {
         case -1:
-            raw_script.push_back(static_cast<uint8_t>(opcode::negative_1));
+            raw_script.push_back(static_cast<uint8_t>(opcode::push_negative_1));
             return;
 
 #define PUSH_X(n) \
@@ -108,27 +102,7 @@ void push_literal(data_chunk& raw_script, int64_t value)
 
 void push_data(data_chunk& raw_script, const data_chunk& data)
 {
-    opcode code;
-
-    // push_size_1 = 76
-    if (data.empty())
-        code = opcode::zero;
-    else if (data.size() < 76)
-        code = opcode::special;
-    else if (data.size() <= 0xff)
-        code = opcode::push_size_1;
-    else if (data.size() <= 0xffff)
-        code = opcode::push_size_2;
-    else
-    {
-        BOOST_REQUIRE_LE(data.size(), 0xffffffffu);
-        code = opcode::push_size_4;
-    }
-
-    script script;
-    script.operations().emplace_back(code, data);
-    const auto more = script.to_data(false);
-    extend_data(raw_script, more);
+    extend_data(raw_script, operation(data).to_data());
 }
 
 static const auto sentinel = "__ENDING__";
@@ -148,6 +122,8 @@ bool parse_token(data_chunk& raw_script, data_chunk& raw_hex, std::string token)
 
     if (token == sentinel)
         return true;
+
+    opcode out_code;
 
     if (is_number(token))
     {
@@ -178,10 +154,11 @@ bool parse_token(data_chunk& raw_script, data_chunk& raw_hex, std::string token)
         data_chunk inner_value(token.begin() + 1, token.end() - 1);
         push_data(raw_script, inner_value);
     }
-    else if (is_opcode(token))
+    else if (opcode_from_string(out_code, token))
     {
-        const auto opcode = token_to_opcode(token);
-        raw_script.push_back(static_cast<uint8_t>(opcode));
+        // opcode_from_string converts push codes (data) in [hex] format,
+        // but that is not currently expected here.
+        raw_script.push_back(static_cast<uint8_t>(out_code));
     }
     else
     {
@@ -209,10 +186,10 @@ bool parse(script& result_script, std::string format)
 
     parse_token(raw_script, raw_hex, sentinel);
 
-    if (!result_script.from_data(raw_script, false, script::parse_mode::strict))
+    if (!result_script.from_data(raw_script, false))
         return false;
 
-    if (result_script.operations().empty())
+    if (result_script.empty())
         return false;
 
     return true;
@@ -247,20 +224,20 @@ BOOST_AUTO_TEST_CASE(script__one_hash__literal__same)
     BOOST_REQUIRE(one_hash == hash_one);
 }
 
-BOOST_AUTO_TEST_CASE(script__from_data__testnet_119058_non_parseable__fallback)
+BOOST_AUTO_TEST_CASE(script__from_data__testnet_119058_non_parseable__failure)
 {
     const auto raw_script = to_chunk(base16_literal("0130323066643366303435313438356531306633383837363437356630643265396130393739343332353534313766653139316438623963623230653430643863333030326431373463336539306366323433393231383761313037623634373337633937333135633932393264653431373731636565613062323563633534353732653302ae"));
 
     script parsed;
-    BOOST_REQUIRE(parsed.from_data(raw_script, false, script::parse_mode::raw_data_fallback));
+    BOOST_REQUIRE(!parsed.from_data(raw_script, false));
 }
 
-BOOST_AUTO_TEST_CASE(script__from_data__parse__fails)
+BOOST_AUTO_TEST_CASE(script__from_data__parse__failure)
 {
     const auto raw_script = to_chunk(base16_literal("3045022100ff1fc58dbd608e5e05846a8e6b45a46ad49878aef6879ad1a7cf4c5a7f853683022074a6a10f6053ab3cddc5620d169c7374cd42c1416c51b9744db2c8d9febfb84d01"));
 
     script parsed;
-    BOOST_REQUIRE(!parsed.from_data(raw_script, true, script::parse_mode::strict));
+    BOOST_REQUIRE(!parsed.from_data(raw_script, true));
 }
 
 BOOST_AUTO_TEST_CASE(script__from_data__to_data__roundtrips)
@@ -268,9 +245,9 @@ BOOST_AUTO_TEST_CASE(script__from_data__to_data__roundtrips)
     const auto normal_output_script = to_chunk(base16_literal("76a91406ccef231c2db72526df9338894ccf9355e8f12188ac"));
 
     script out_script;
-    BOOST_REQUIRE(out_script.from_data(normal_output_script, false, script::parse_mode::raw_data_fallback));
+    BOOST_REQUIRE(out_script.from_data(normal_output_script, false));
 
-    data_chunk roundtrip = out_script.to_data(false);
+    const auto roundtrip = out_script.to_data(false);
     BOOST_REQUIRE(roundtrip == normal_output_script);
 }
 
@@ -296,40 +273,16 @@ BOOST_AUTO_TEST_CASE(script__from_data__to_data_weird__roundtrips)
         "74b1d185dbf5b4db4ddb0642848868685174519c6351670068"));
 
     script weird;
-    BOOST_REQUIRE(weird.from_data(weird_raw_script, false, script::parse_mode::raw_data_fallback));
+    BOOST_REQUIRE(weird.from_data(weird_raw_script, false));
 
-    data_chunk roundtrip_result = weird.to_data(false);
+    const auto roundtrip_result = weird.to_data(false);
     BOOST_REQUIRE(roundtrip_result == weird_raw_script);
-}
-
-BOOST_AUTO_TEST_CASE(script__is_raw_data_operations_size_not_equal_one_returns_false)
-{
-    script instance;
-    BOOST_REQUIRE(!instance.is_raw_data());
-}
-
-BOOST_AUTO_TEST_CASE(script__is_raw_data_code_not_equal_raw_data_returns_false)
-{
-    script instance;
-    instance.operations().emplace_back();
-    instance.operations().back().set_code(opcode::verify);
-    BOOST_REQUIRE(!instance.is_raw_data());
-}
-
-BOOST_AUTO_TEST_CASE(script__is_raw_data_returns_true)
-{
-    const auto data = to_chunk(base16_literal("0ac12ca4e"));
-
-    auto instance = script::factory_from_data(data, false,
-        script::parse_mode::raw_data);
-
-    BOOST_REQUIRE(instance.is_raw_data());
 }
 
 BOOST_AUTO_TEST_CASE(script__factory_from_data_chunk_test)
 {
-    auto raw = to_chunk(base16_literal("76a914fc7b44566256621affb1541cc9d59f08336d276b88ac"));
-    auto instance = script::factory_from_data(raw, false, script::parse_mode::strict);
+    const auto raw = to_chunk(base16_literal("76a914fc7b44566256621affb1541cc9d59f08336d276b88ac"));
+    const auto instance = script::factory_from_data(raw, false);
     BOOST_REQUIRE(instance.is_valid());
 }
 
@@ -337,7 +290,7 @@ BOOST_AUTO_TEST_CASE(script__factory_from_data_stream_test)
 {
     auto raw = to_chunk(base16_literal("76a914fc7b44566256621affb1541cc9d59f08336d276b88ac"));
     data_source istream(raw);
-    auto instance = script::factory_from_data(istream, false, script::parse_mode::strict);
+    auto instance = script::factory_from_data(istream, false);
     BOOST_REQUIRE(instance.is_valid());
 }
 
@@ -346,7 +299,7 @@ BOOST_AUTO_TEST_CASE(script__factory_from_data_reader_test)
     auto raw = to_chunk(base16_literal("76a914fc7b44566256621affb1541cc9d59f08336d276b88ac"));
     data_source istream(raw);
     istream_reader source(istream);
-    auto instance = script::factory_from_data(source, false, script::parse_mode::strict);
+    const auto instance = script::factory_from_data(source, false);
     BOOST_REQUIRE(instance.is_valid());
 }
 
@@ -358,7 +311,7 @@ BOOST_AUTO_TEST_CASE(script__from_data__first_byte_invalid_wire_code__failure)
         "8292e8a8ade38191e381a6e381afe38184e381aae38184"));
 
     script instance;
-    BOOST_REQUIRE(!instance.from_data(raw, false, script::parse_mode::strict));
+    BOOST_REQUIRE(!instance.from_data(raw, false));
 }
 
 BOOST_AUTO_TEST_CASE(script__from_data__internal_invalid_wire_code__failure)
@@ -369,7 +322,7 @@ BOOST_AUTO_TEST_CASE(script__from_data__internal_invalid_wire_code__failure)
         "8292e8a8ade38191e381a6e381afe38184e381aae38184"));
 
     script instance;
-    BOOST_REQUIRE(!instance.from_data(raw, false, script::parse_mode::strict));
+    BOOST_REQUIRE(!instance.from_data(raw, false));
 }
 
 // Valid pay-to-script-hash scripts are valid regardless of context,
@@ -538,8 +491,7 @@ BOOST_AUTO_TEST_CASE(script__checksig__uses_one_hash)
     decode_base16(script_data, "76a91433cef61749d11ba2adf091a5e045678177fe3a6d88ac");
 
     script script_code;
-    static const auto prefix = false;
-    BOOST_REQUIRE(script_code.from_data(script_data, prefix, script::parse_mode::strict));
+    BOOST_REQUIRE(script_code.from_data(script_data, false));
 
     ec_signature signature;
     static const auto strict = true;
@@ -566,13 +518,11 @@ BOOST_AUTO_TEST_CASE(script__checksig__normal)
     decode_base16(script_data, "76a914fcc9b36d38cf55d7d5b4ee4dddb6b2c17612f48c88ac");
 
     script script_code;
-    static const auto prefix = false;
-    BOOST_REQUIRE(script_code.from_data(script_data, prefix, script::parse_mode::strict));
+    BOOST_REQUIRE(script_code.from_data(script_data, false));
 
     ec_signature signature;
-    static const auto strict = true;
     static const uint32_t input_index = 0;
-    BOOST_REQUIRE(parse_signature(signature, distinguished, strict));
+    BOOST_REQUIRE(parse_signature(signature, distinguished, true));
     BOOST_REQUIRE(script::check_signature(signature, sighash_algorithm::single, pubkey, script_code, parent_tx, input_index));
 }
 
@@ -590,7 +540,7 @@ BOOST_AUTO_TEST_CASE(script__create_endorsement__single_input_single_output__exp
 
     endorsement out;
     const uint32_t input_index = 0;
-    const uint8_t sighash_type = sighash_algorithm::all;
+    const auto sighash_type = sighash_algorithm::all;
     BOOST_REQUIRE(script::create_endorsement(out, secret, prevout_script, new_tx, input_index, sighash_type));
 
     const auto result = encode_base16(out);
@@ -612,7 +562,7 @@ BOOST_AUTO_TEST_CASE(script__create_endorsement__single_input_no_output__expecte
 
     endorsement out;
     const uint32_t input_index = 0;
-    const uint8_t sighash_type = sighash_algorithm::all;
+    const auto sighash_type = sighash_algorithm::all;
     BOOST_REQUIRE(script::create_endorsement(out, secret, prevout_script, new_tx, input_index, sighash_type));
 
     const auto result = encode_base16(out);
@@ -632,7 +582,7 @@ BOOST_AUTO_TEST_CASE(script__generate_signature_hash__all__expected)
 
     endorsement out;
     const uint32_t input_index = 0;
-    const uint8_t sighash_type = sighash_algorithm::all;
+    const auto sighash_type = sighash_algorithm::all;
     const auto sighash = script::generate_signature_hash(new_tx, input_index, prevout_script, sighash_type);
     const auto result = encode_base16(sighash);
     const auto expected = "f89572635651b2e4f89778350616989183c98d1a721c911324bf9f17a0cf5bf0";

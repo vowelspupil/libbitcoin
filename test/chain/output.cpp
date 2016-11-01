@@ -37,7 +37,7 @@ BOOST_AUTO_TEST_CASE(output__constructor_2__valid_input__returns_input_initializ
     uint64_t value = 643u;
     chain::script script;
     const auto data = to_chunk(base16_literal("ece424a6bb6ddf4db592c0faed60685047a361b1"));
-    BOOST_REQUIRE(script.from_data(data, false, chain::script::parse_mode::raw_data));
+    BOOST_REQUIRE(script.from_data(data, false));
 
     chain::output instance(value, script);
     BOOST_REQUIRE(instance.is_valid());
@@ -50,7 +50,7 @@ BOOST_AUTO_TEST_CASE(output__constructor_3__valid_input__returns_input_initializ
     uint64_t value = 643u;
     chain::script script;
     const auto data = to_chunk(base16_literal("ece424a6bb6ddf4db592c0faed60685047a361b1"));
-    BOOST_REQUIRE(script.from_data(data, false, chain::script::parse_mode::raw_data));
+    BOOST_REQUIRE(script.from_data(data, false));
 
     // This must be non-const.
     auto dup_script = script;
@@ -150,7 +150,7 @@ BOOST_AUTO_TEST_CASE(output__script_setter_1__roundtrip__success)
 {
     chain::script value;
     const auto data = to_chunk(base16_literal("ece424a6bb6ddf4db592c0faed60685047a361b1"));
-     BOOST_REQUIRE(value.from_data(data, false, chain::script::parse_mode::raw_data));
+     BOOST_REQUIRE(value.from_data(data, false));
 
     chain::output instance;
     BOOST_REQUIRE(value != instance.script());
@@ -164,7 +164,7 @@ BOOST_AUTO_TEST_CASE(output__script_setter_2__roundtrip__success)
 {
     chain::script value;
     const auto data = to_chunk(base16_literal("ece424a6bb6ddf4db592c0faed60685047a361b1"));
-    BOOST_REQUIRE(value.from_data(data, false, chain::script::parse_mode::raw_data));
+    BOOST_REQUIRE(value.from_data(data, false));
 
     // This must be non-const.
     auto dup_value = value;

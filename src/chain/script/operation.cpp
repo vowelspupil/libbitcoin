@@ -37,11 +37,15 @@
 namespace libbitcoin {
 namespace chain {
 
+// The failed-state code must not pass execution, so it must be 'disabled'.
+// Otherwise the script processor would be required to check the stack state.
+static constexpr auto invalid_code = opcode::disabled_xor;
+
 // Constructors.
 //-----------------------------------------------------------------------------
 
 operation::operation()
-  : code_(opcode::push_size_0), valid_(false)
+  : code_(invalid_code), valid_(false)
 {
 }
 
@@ -208,7 +212,7 @@ bool operation::is_valid() const
 // protected
 void operation::reset()
 {
-    code_ = opcode::push_size_0;
+    code_ = invalid_code;
     data_.clear();
     valid_ = false;
 }
