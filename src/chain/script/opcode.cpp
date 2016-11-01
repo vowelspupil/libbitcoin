@@ -156,9 +156,9 @@ std::string opcode_to_string(opcode value, uint32_t active_forks)
             return "if";
         case opcode::notif:
             return "notif";
-        case opcode::reserved_101:
+        case opcode::disabled_verif:
             return "verif";             // deprecated, use hex
-        case opcode::reserved_102:
+        case opcode::disabled_vernotif:
             return "vernotif";          // deprecated, use hex
         case opcode::else_:
             return "else";
@@ -512,8 +512,8 @@ bool opcode_from_string(opcode& out_code, const std::string& value)
     RETURN_IF_OPCODE_OR_ALIAS("reserved_98", "ver", reserved_98);
     RETURN_IF_OPCODE("if", if_);
     RETURN_IF_OPCODE("notif", notif);
-    RETURN_IF_OPCODE_OR_ALIAS("reserved_101", "verif", reserved_101);
-    RETURN_IF_OPCODE_OR_ALIAS("reserved_102", "vernotif", reserved_102);
+    RETURN_IF_OPCODE_OR_ALIAS("disabled_verif", "verif", disabled_verif);
+    RETURN_IF_OPCODE_OR_ALIAS("disabled_vernotif", "vernotif", disabled_vernotif);
     RETURN_IF_OPCODE("else", else_);
     RETURN_IF_OPCODE("endif", endif);
     RETURN_IF_OPCODE("verify", verify);

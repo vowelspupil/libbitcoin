@@ -378,16 +378,18 @@ bool operation::is_push(opcode code)
 {
     static constexpr auto op_80 = static_cast<uint8_t>(opcode::reserved_80);
     static constexpr auto op_96 = static_cast<uint8_t>(opcode::push_positive_16);
-
     const auto value = static_cast<uint8_t>(code);
+
+    // non-consensus (see script::is_push_data_only)
     return value <= op_96 && value != op_80;
 }
 
 bool operation::is_counted(opcode code)
 {
     static constexpr auto op_97 = static_cast<uint8_t>(opcode::nop);
-
     const auto value = static_cast<uint8_t>(code);
+
+    // consensus
     return value >= op_97;
 }
 
@@ -433,6 +435,16 @@ bool operation::is_disabled(opcode code)
         case opcode::disabled_mod:
         case opcode::disabled_lshift:
         case opcode::disabled_rshift:
+
+        //*********************************************************************
+        // CONSENSUS: reserved conditionals are effectively disabled.
+        // These are in the conditional range yet are not handled.
+        // as a result satoshi always processes them in the op swtich.
+        // This causes them to always fail as unhandled. "VER" is outside the
+        // satoshi conditional range test so it does not exhibit this behavior.
+        //*********************************************************************
+        case opcode::disabled_verif:
+        case opcode::disabled_vernotif:
             return true;
         default:
             return false;

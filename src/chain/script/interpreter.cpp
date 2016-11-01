@@ -1109,10 +1109,10 @@ bool interpreter::run_op(operation::const_iterator pc, const transaction& tx,
             return op_if(context);
         case opcode::notif:
             return op_notif(context);
-        case opcode::reserved_101:
-            return op_reserved(code);
-        case opcode::reserved_102:
-            return op_reserved(code);
+        case opcode::disabled_verif:
+            return op_disabled(code);
+        case opcode::disabled_vernotif:
+            return op_disabled(code);
         case opcode::else_:
             return op_else(context);
         case opcode::endif:

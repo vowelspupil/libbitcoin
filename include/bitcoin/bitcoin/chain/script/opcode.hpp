@@ -139,8 +139,8 @@ enum class opcode : uint8_t
     reserved_98 = 98,       // [ver]
     if_ = 99,               // is_conditional
     notif = 100,            // is_conditional
-    reserved_101 = 101,     // [verif]
-    reserved_102 = 102,     // [vernotif]
+    disabled_verif = 101,   // is_disabled
+    disabled_vernotif = 102,// is_disabled
     else_ = 103,            // is_conditional
     endif = 104,            // is_conditional
     verify = 105,

@@ -85,17 +85,17 @@ BOOST_AUTO_TEST_CASE(opcode__opcode_to_string__reserved_98_any_forks__ver)
 }
 
 // Use the traditional serializations for all codes (in this case 'verif' vs. '0x65').
-BOOST_AUTO_TEST_CASE(opcode__opcode_to_string__reserved_101_any_forks__verif)
+BOOST_AUTO_TEST_CASE(opcode__opcode_to_string__disabled_verif_any_forks__verif)
 {
-    BOOST_REQUIRE(opcode_to_string(opcode::reserved_101, rule_fork::no_rules) == "verif");
-    BOOST_REQUIRE(opcode_to_string(opcode::reserved_101, rule_fork::all_rules) == "verif");
+    BOOST_REQUIRE(opcode_to_string(opcode::disabled_verif, rule_fork::no_rules) == "verif");
+    BOOST_REQUIRE(opcode_to_string(opcode::disabled_verif, rule_fork::all_rules) == "verif");
 }
 
 // Use the traditional serializations for all codes (in this case 'vernotif' vs. '0x66').
-BOOST_AUTO_TEST_CASE(opcode__opcode_to_string__reserved_102_any_forks__vernotif)
+BOOST_AUTO_TEST_CASE(opcode__opcode_to_string__disabled_vernotif_any_forks__vernotif)
 {
-    BOOST_REQUIRE(opcode_to_string(opcode::reserved_102, rule_fork::no_rules) == "vernotif");
-    BOOST_REQUIRE(opcode_to_string(opcode::reserved_102, rule_fork::all_rules) == "vernotif");
+    BOOST_REQUIRE(opcode_to_string(opcode::disabled_vernotif, rule_fork::no_rules) == "vernotif");
+    BOOST_REQUIRE(opcode_to_string(opcode::disabled_vernotif, rule_fork::all_rules) == "vernotif");
 }
 
 // Use the traditional serializations for all codes (in this case '2drop' vs. 'drop2').
@@ -324,18 +324,18 @@ BOOST_AUTO_TEST_CASE(opcode__opcode_from_string__ver__reserved_98)
     BOOST_REQUIRE(out_code == opcode::reserved_98);
 }
 
-BOOST_AUTO_TEST_CASE(opcode__opcode_from_string__verif__reserved_101)
+BOOST_AUTO_TEST_CASE(opcode__opcode_from_string__verif__disabled_verif)
 {
     opcode out_code;
     BOOST_REQUIRE(opcode_from_string(out_code, "verif"));
-    BOOST_REQUIRE(out_code == opcode::reserved_101);
+    BOOST_REQUIRE(out_code == opcode::disabled_verif);
 }
 
-BOOST_AUTO_TEST_CASE(opcode__opcode_from_string__vernotif__reserved_102)
+BOOST_AUTO_TEST_CASE(opcode__opcode_from_string__vernotif__disabled_vernotif)
 {
     opcode out_code;
     BOOST_REQUIRE(opcode_from_string(out_code, "vernotif"));
-    BOOST_REQUIRE(out_code == opcode::reserved_102);
+    BOOST_REQUIRE(out_code == opcode::disabled_vernotif);
 }
 
 BOOST_AUTO_TEST_CASE(opcode__opcode_from_string__reserved_98__reserved_98)
@@ -345,18 +345,18 @@ BOOST_AUTO_TEST_CASE(opcode__opcode_from_string__reserved_98__reserved_98)
     BOOST_REQUIRE(out_code == opcode::reserved_98);
 }
 
-BOOST_AUTO_TEST_CASE(opcode__opcode_from_string__reserved_101__reserved_101)
+BOOST_AUTO_TEST_CASE(opcode__opcode_from_string__disabled_verif__disabled_verif)
 {
     opcode out_code;
-    BOOST_REQUIRE(opcode_from_string(out_code, "reserved_101"));
-    BOOST_REQUIRE(out_code == opcode::reserved_101);
+    BOOST_REQUIRE(opcode_from_string(out_code, "disabled_verif"));
+    BOOST_REQUIRE(out_code == opcode::disabled_verif);
 }
 
-BOOST_AUTO_TEST_CASE(opcode__opcode_from_string__reserved_102__reserved_102)
+BOOST_AUTO_TEST_CASE(opcode__opcode_from_string__disabled_vernotif__disabled_vernotif)
 {
     opcode out_code;
-    BOOST_REQUIRE(opcode_from_string(out_code, "reserved_102"));
-    BOOST_REQUIRE(out_code == opcode::reserved_102);
+    BOOST_REQUIRE(opcode_from_string(out_code, "disabled_vernotif"));
+    BOOST_REQUIRE(out_code == opcode::disabled_vernotif);
 }
 
 // math
@@ -517,14 +517,14 @@ BOOST_AUTO_TEST_CASE(opcode__opcode_from_string__reserved2__reserved_138)
     BOOST_REQUIRE(out_code == opcode::reserved_138);
 }
 
-BOOST_AUTO_TEST_CASE(opcode__opcode_from_string__reserved_102__reserved_137)
+BOOST_AUTO_TEST_CASE(opcode__opcode_from_string__disabled_vernotif__reserved_137)
 {
     opcode out_code;
     BOOST_REQUIRE(opcode_from_string(out_code, "reserved_137"));
     BOOST_REQUIRE(out_code == opcode::reserved_137);
 }
 
-BOOST_AUTO_TEST_CASE(opcode__opcode_from_string__reserved_102__reserved_138)
+BOOST_AUTO_TEST_CASE(opcode__opcode_from_string__disabled_vernotif__reserved_138)
 {
     opcode out_code;
     BOOST_REQUIRE(opcode_from_string(out_code, "reserved_138"));
