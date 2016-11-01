@@ -557,7 +557,7 @@ bool opcode_from_string(opcode& out_code, const std::string& value)
     RETURN_IF_OPCODE("negate", negate);
     RETURN_IF_OPCODE("abs", abs);
     RETURN_IF_OPCODE("not", not);
-    RETURN_IF_OPCODE("nonzero", nonzero);
+    RETURN_IF_OPCODE_OR_ALIAS("nonzero", "0notequal", nonzero);
     RETURN_IF_OPCODE("add", add);
     RETURN_IF_OPCODE("sub", sub);
     RETURN_IF_OPCODE("mul", disabled_mul);
