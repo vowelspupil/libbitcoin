@@ -428,21 +428,21 @@ BOOST_AUTO_TEST_CASE(script__multisig__valid)
     }
 }
 
-////// These are scripts potentially affected by bip66 (but should not be).
-////BOOST_AUTO_TEST_CASE(script__multisig__invalid)
-////{
-////    for (const auto& test: invalid_multisig_scripts)
-////    {
-////        const auto tx = new_tx(test);
-////        BOOST_REQUIRE_MESSAGE(tx.is_valid(), test.description);
-////        BOOST_REQUIRE_MESSAGE(!tx.inputs().empty(), test.description);
-////
-////        // These are always invalid.
-////        BOOST_CHECK_MESSAGE(script::verify(tx, 0, rule_fork::no_rules) != error::success, test.description);
-////        BOOST_CHECK_MESSAGE(script::verify(tx, 0, rule_fork::bip66_rule) != error::success, test.description);
-////        BOOST_CHECK_MESSAGE(script::verify(tx, 0, rule_fork::all_rules) != error::success, test.description);
-////    }
-////}
+// These are scripts potentially affected by bip66 (but should not be).
+BOOST_AUTO_TEST_CASE(script__multisig__invalid)
+{
+    for (const auto& test: invalid_multisig_scripts)
+    {
+        const auto tx = new_tx(test);
+        BOOST_REQUIRE_MESSAGE(tx.is_valid(), test.description);
+        BOOST_REQUIRE_MESSAGE(!tx.inputs().empty(), test.description);
+
+        // These are always invalid.
+        BOOST_CHECK_MESSAGE(script::verify(tx, 0, rule_fork::no_rules) != error::success, test.description);
+        BOOST_CHECK_MESSAGE(script::verify(tx, 0, rule_fork::bip66_rule) != error::success, test.description);
+        BOOST_CHECK_MESSAGE(script::verify(tx, 0, rule_fork::all_rules) != error::success, test.description);
+    }
+}
 
 BOOST_AUTO_TEST_CASE(script__context_free__valid)
 {

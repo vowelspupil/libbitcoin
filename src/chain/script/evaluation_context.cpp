@@ -67,6 +67,7 @@ bool evaluation_context::set_script(const script& script)
         return false;
 
     begin_ = script.begin();
+    jump_ = script.begin();
     end_ = script.end();
     op_count_ = 0;
     return true;

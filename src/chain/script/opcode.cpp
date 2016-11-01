@@ -571,6 +571,7 @@ bool opcode_from_string(opcode& out_code, const std::string& value)
     RETURN_IF_OPCODE("numequalverify", numequalverify);
     RETURN_IF_OPCODE("numnotequal", numnotequal);
     RETURN_IF_OPCODE("lessthan", lessthan);
+    RETURN_IF_OPCODE("greaterthan", greaterthan);
     RETURN_IF_OPCODE("lessthanorequal", lessthanorequal);
     RETURN_IF_OPCODE("greaterthanorequal", greaterthanorequal);
     RETURN_IF_OPCODE("min", min);
