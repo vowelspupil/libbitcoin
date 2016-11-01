@@ -117,7 +117,7 @@ bool parse_token(data_chunk& raw_script, data_chunk& raw_hex, std::string token)
     if (token == sentinel || !is_hex_data(token))
     {
         extend_data(raw_script, raw_hex);
-        raw_hex.resize(0);
+        raw_hex.clear();
     }
 
     if (token == sentinel)
@@ -224,20 +224,20 @@ BOOST_AUTO_TEST_CASE(script__one_hash__literal__same)
     BOOST_REQUIRE(one_hash == hash_one);
 }
 
-BOOST_AUTO_TEST_CASE(script__from_data__testnet_119058_non_parseable__failure)
+BOOST_AUTO_TEST_CASE(script__from_data__testnet_119058_invalid_op_codes__success)
 {
     const auto raw_script = to_chunk(base16_literal("0130323066643366303435313438356531306633383837363437356630643265396130393739343332353534313766653139316438623963623230653430643863333030326431373463336539306366323433393231383761313037623634373337633937333135633932393264653431373731636565613062323563633534353732653302ae"));
 
     script parsed;
-    BOOST_REQUIRE(!parsed.from_data(raw_script, false));
+    BOOST_REQUIRE(parsed.from_data(raw_script, false));
 }
 
-BOOST_AUTO_TEST_CASE(script__from_data__parse__failure)
+BOOST_AUTO_TEST_CASE(script__from_data__parse__success)
 {
     const auto raw_script = to_chunk(base16_literal("3045022100ff1fc58dbd608e5e05846a8e6b45a46ad49878aef6879ad1a7cf4c5a7f853683022074a6a10f6053ab3cddc5620d169c7374cd42c1416c51b9744db2c8d9febfb84d01"));
 
     script parsed;
-    BOOST_REQUIRE(!parsed.from_data(raw_script, true));
+    BOOST_REQUIRE(parsed.from_data(raw_script, true));
 }
 
 BOOST_AUTO_TEST_CASE(script__from_data__to_data__roundtrips)
@@ -303,7 +303,7 @@ BOOST_AUTO_TEST_CASE(script__factory_from_data_reader_test)
     BOOST_REQUIRE(instance.is_valid());
 }
 
-BOOST_AUTO_TEST_CASE(script__from_data__first_byte_invalid_wire_code__failure)
+BOOST_AUTO_TEST_CASE(script__from_data__first_byte_invalid_wire_code__success)
 {
     const auto raw = to_chunk(base16_literal(
         "bb566a54e38193e381aee4b896e7958ce381afe496e4babae381abe38288e381"
@@ -311,10 +311,10 @@ BOOST_AUTO_TEST_CASE(script__from_data__first_byte_invalid_wire_code__failure)
         "8292e8a8ade38191e381a6e381afe38184e381aae38184"));
 
     script instance;
-    BOOST_REQUIRE(!instance.from_data(raw, false));
+    BOOST_REQUIRE(instance.from_data(raw, false));
 }
 
-BOOST_AUTO_TEST_CASE(script__from_data__internal_invalid_wire_code__failure)
+BOOST_AUTO_TEST_CASE(script__from_data__internal_invalid_wire_code__success)
 {
     const auto raw = to_chunk(base16_literal(
         "566a54e38193e381aee4b896e7958ce381afe4bb96e4babae381abe38288e381"
@@ -322,7 +322,7 @@ BOOST_AUTO_TEST_CASE(script__from_data__internal_invalid_wire_code__failure)
         "8292e8a8ade38191e381a6e381afe38184e381aae38184"));
 
     script instance;
-    BOOST_REQUIRE(!instance.from_data(raw, false));
+    BOOST_REQUIRE(instance.from_data(raw, false));
 }
 
 // Valid pay-to-script-hash scripts are valid regardless of context,
@@ -332,7 +332,8 @@ BOOST_AUTO_TEST_CASE(script__bip16__valid)
     for (const auto& test: valid_bip16_scripts)
     {
         const auto tx = new_tx(test);
-        BOOST_CHECK_MESSAGE(!tx.inputs().empty(), test.description);
+        BOOST_REQUIRE_MESSAGE(tx.is_valid(), test.description);
+        BOOST_REQUIRE_MESSAGE(!tx.inputs().empty(), test.description);
 
         // These are valid prior to and after BIP16 activation.
         BOOST_CHECK_MESSAGE(script::verify(tx, 0, rule_fork::no_rules) == error::success, test.description);
@@ -346,7 +347,8 @@ BOOST_AUTO_TEST_CASE(script__bip16__invalidated)
     for (const auto& test: invalidated_bip16_scripts)
     {
         const auto tx = new_tx(test);
-        BOOST_CHECK_MESSAGE(!tx.inputs().empty(), test.description);
+        BOOST_REQUIRE_MESSAGE(tx.is_valid(), test.description);
+        BOOST_REQUIRE_MESSAGE(!tx.inputs().empty(), test.description);
 
         // These are valid prior to BIP16 activation and invalid after.
         BOOST_CHECK_MESSAGE(script::verify(tx, 0, rule_fork::no_rules) == error::success, test.description);
@@ -361,7 +363,8 @@ BOOST_AUTO_TEST_CASE(script__bip65__valid)
     for (const auto& test: valid_bip65_scripts)
     {
         auto tx = new_tx(test);
-        BOOST_CHECK_MESSAGE(!tx.inputs().empty(), test.description);
+        BOOST_REQUIRE_MESSAGE(tx.is_valid(), test.description);
+        BOOST_REQUIRE_MESSAGE(!tx.inputs().empty(), test.description);
 
         tx.set_locktime(500000042);
         tx.inputs()[0].set_sequence(42);
@@ -378,7 +381,8 @@ BOOST_AUTO_TEST_CASE(script__bip65__invalid)
     for (const auto& test: invalid_bip65_scripts)
     {
         auto tx = new_tx(test);
-        BOOST_CHECK_MESSAGE(!tx.inputs().empty(), test.description);
+        BOOST_REQUIRE_MESSAGE(tx.is_valid(), test.description);
+        BOOST_REQUIRE_MESSAGE(!tx.inputs().empty(), test.description);
 
         tx.set_locktime(99);
         tx.inputs()[0].set_sequence(42);
@@ -395,7 +399,8 @@ BOOST_AUTO_TEST_CASE(script__bip65__invalidated)
     for (const auto& test: invalidated_bip65_scripts)
     {
         auto tx = new_tx(test);
-        BOOST_CHECK_MESSAGE(!tx.inputs().empty(), test.description);
+        BOOST_REQUIRE_MESSAGE(tx.is_valid(), test.description);
+        BOOST_REQUIRE_MESSAGE(!tx.inputs().empty(), test.description);
 
         tx.set_locktime(99);
         tx.inputs()[0].set_sequence(42);
@@ -407,42 +412,45 @@ BOOST_AUTO_TEST_CASE(script__bip65__invalidated)
     }
 }
 
-// These are scripts potentially affected by bip66 (but should not be).
-BOOST_AUTO_TEST_CASE(script__multisig__valid)
-{
-    for (const auto& test: valid_multisig_scripts)
-    {
-        const auto tx = new_tx(test);
-        BOOST_CHECK_MESSAGE(!tx.inputs().empty(), test.description);
-
-        // These are always valid.
-        BOOST_CHECK_MESSAGE(script::verify(tx, 0, rule_fork::no_rules) == error::success, test.description);
-        BOOST_CHECK_MESSAGE(script::verify(tx, 0, rule_fork::bip66_rule) == error::success, test.description);
-        BOOST_CHECK_MESSAGE(script::verify(tx, 0, rule_fork::all_rules) == error::success, test.description);
-    }
-}
-
-// These are scripts potentially affected by bip66 (but should not be).
-BOOST_AUTO_TEST_CASE(script__multisig__invalid)
-{
-    for (const auto& test: invalid_multisig_scripts)
-    {
-        const auto tx = new_tx(test);
-        BOOST_CHECK_MESSAGE(!tx.inputs().empty(), test.description);
-
-        // These are always invalid.
-        BOOST_CHECK_MESSAGE(script::verify(tx, 0, rule_fork::no_rules) != error::success, test.description);
-        BOOST_CHECK_MESSAGE(script::verify(tx, 0, rule_fork::bip66_rule) != error::success, test.description);
-        BOOST_CHECK_MESSAGE(script::verify(tx, 0, rule_fork::all_rules) != error::success, test.description);
-    }
-}
+////// These are scripts potentially affected by bip66 (but should not be).
+////BOOST_AUTO_TEST_CASE(script__multisig__valid)
+////{
+////    for (const auto& test: valid_multisig_scripts)
+////    {
+////        const auto tx = new_tx(test);
+////        BOOST_REQUIRE_MESSAGE(tx.is_valid(), test.description);
+////        BOOST_REQUIRE_MESSAGE(!tx.inputs().empty(), test.description);
+////
+////        // These are always valid.
+////        BOOST_CHECK_MESSAGE(script::verify(tx, 0, rule_fork::no_rules) == error::success, test.description);
+////        BOOST_CHECK_MESSAGE(script::verify(tx, 0, rule_fork::bip66_rule) == error::success, test.description);
+////        BOOST_CHECK_MESSAGE(script::verify(tx, 0, rule_fork::all_rules) == error::success, test.description);
+////    }
+////}
+////
+////// These are scripts potentially affected by bip66 (but should not be).
+////BOOST_AUTO_TEST_CASE(script__multisig__invalid)
+////{
+////    for (const auto& test: invalid_multisig_scripts)
+////    {
+////        const auto tx = new_tx(test);
+////        BOOST_REQUIRE_MESSAGE(tx.is_valid(), test.description);
+////        BOOST_REQUIRE_MESSAGE(!tx.inputs().empty(), test.description);
+////
+////        // These are always invalid.
+////        BOOST_CHECK_MESSAGE(script::verify(tx, 0, rule_fork::no_rules) != error::success, test.description);
+////        BOOST_CHECK_MESSAGE(script::verify(tx, 0, rule_fork::bip66_rule) != error::success, test.description);
+////        BOOST_CHECK_MESSAGE(script::verify(tx, 0, rule_fork::all_rules) != error::success, test.description);
+////    }
+////}
 
 BOOST_AUTO_TEST_CASE(script__context_free__valid)
 {
     for (const auto& test: valid_context_free_scripts)
     {
         const auto tx = new_tx(test);
-        BOOST_CHECK_MESSAGE(!tx.inputs().empty(), test.description);
+        BOOST_REQUIRE_MESSAGE(tx.is_valid(), test.description);
+        BOOST_REQUIRE_MESSAGE(!tx.inputs().empty(), test.description);
 
         // These are always valid.
         BOOST_CHECK_MESSAGE(script::verify(tx, 0, rule_fork::no_rules) == error::success, test.description);
@@ -450,25 +458,17 @@ BOOST_AUTO_TEST_CASE(script__context_free__valid)
     }
 }
 
-////BOOST_AUTO_TEST_CASE(script__context_free__invalid)
-////{
-////    for (const auto& test: invalid_context_free_scripts)
-////    {
-////        const auto tx = new_tx(test);
-////        BOOST_CHECK_MESSAGE(!tx.inputs().empty(), test.description);
-////
-////        // These are always invalid.
-////        BOOST_CHECK_MESSAGE(script::verify(tx, 0, rule_fork::no_rules) != error::success, test.description);
-////        BOOST_CHECK_MESSAGE(script::verify(tx, 0, rule_fork::all_rules) != error::success, test.description);
-////    }
-////}
-
-BOOST_AUTO_TEST_CASE(script__invalid_parse__empty_inputs)
+BOOST_AUTO_TEST_CASE(script__context_free__invalid)
 {
-    for (const auto& test: invalid_parse_scripts)
+    for (const auto& test: invalid_context_free_scripts)
     {
         const auto tx = new_tx(test);
-        BOOST_CHECK_MESSAGE(tx.inputs().empty(), test.description);
+        BOOST_REQUIRE_MESSAGE(tx.is_valid(), test.description);
+        BOOST_REQUIRE_MESSAGE(!tx.inputs().empty(), test.description);
+
+        // These are always invalid.
+        BOOST_CHECK_MESSAGE(script::verify(tx, 0, rule_fork::no_rules) != error::success, test.description);
+        BOOST_CHECK_MESSAGE(script::verify(tx, 0, rule_fork::all_rules) != error::success, test.description);
     }
 }
 
@@ -479,7 +479,7 @@ BOOST_AUTO_TEST_CASE(script__checksig__uses_one_hash)
     data_chunk tx_data;
     decode_base16(tx_data, "0100000002dc38e9359bd7da3b58386204e186d9408685f427f5e513666db735aa8a6b2169000000006a47304402205d8feeb312478e468d0b514e63e113958d7214fa572acd87079a7f0cc026fc5c02200fa76ea05bf243af6d0f9177f241caf606d01fcfd5e62d6befbca24e569e5c27032102100a1a9ca2c18932d6577c58f225580184d0e08226d41959874ac963e3c1b2feffffffffdc38e9359bd7da3b58386204e186d9408685f427f5e513666db735aa8a6b2169010000006b4830450220087ede38729e6d35e4f515505018e659222031273b7366920f393ee3ab17bc1e022100ca43164b757d1a6d1235f13200d4b5f76dd8fda4ec9fc28546b2df5b1211e8df03210275983913e60093b767e85597ca9397fb2f418e57f998d6afbbc536116085b1cbffffffff0140899500000000001976a914fcc9b36d38cf55d7d5b4ee4dddb6b2c17612f48c88ac00000000");
     transaction parent_tx;
-    parent_tx.from_data(tx_data);
+    BOOST_REQUIRE(parent_tx.from_data(tx_data));
 
     data_chunk distinguished;
     decode_base16(distinguished, "30450220087ede38729e6d35e4f515505018e659222031273b7366920f393ee3ab17bc1e022100ca43164b757d1a6d1235f13200d4b5f76dd8fda4ec9fc28546b2df5b1211e8df");
@@ -506,7 +506,7 @@ BOOST_AUTO_TEST_CASE(script__checksig__normal)
     data_chunk tx_data;
     decode_base16(tx_data, "0100000002dc38e9359bd7da3b58386204e186d9408685f427f5e513666db735aa8a6b2169000000006a47304402205d8feeb312478e468d0b514e63e113958d7214fa572acd87079a7f0cc026fc5c02200fa76ea05bf243af6d0f9177f241caf606d01fcfd5e62d6befbca24e569e5c27032102100a1a9ca2c18932d6577c58f225580184d0e08226d41959874ac963e3c1b2feffffffffdc38e9359bd7da3b58386204e186d9408685f427f5e513666db735aa8a6b2169010000006b4830450220087ede38729e6d35e4f515505018e659222031273b7366920f393ee3ab17bc1e022100ca43164b757d1a6d1235f13200d4b5f76dd8fda4ec9fc28546b2df5b1211e8df03210275983913e60093b767e85597ca9397fb2f418e57f998d6afbbc536116085b1cbffffffff0140899500000000001976a914fcc9b36d38cf55d7d5b4ee4dddb6b2c17612f48c88ac00000000");
     transaction parent_tx;
-    parent_tx.from_data(tx_data);
+    BOOST_REQUIRE(parent_tx.from_data(tx_data));
 
     data_chunk distinguished;
     decode_base16(distinguished, "304402205d8feeb312478e468d0b514e63e113958d7214fa572acd87079a7f0cc026fc5c02200fa76ea05bf243af6d0f9177f241caf606d01fcfd5e62d6befbca24e569e5c27");
@@ -531,10 +531,10 @@ BOOST_AUTO_TEST_CASE(script__create_endorsement__single_input_single_output__exp
     data_chunk tx_data;
     decode_base16(tx_data, "0100000001b3807042c92f449bbf79b33ca59d7dfec7f4cc71096704a9c526dddf496ee0970100000000ffffffff01905f0100000000001976a91418c0bd8d1818f1bf99cb1df2269c645318ef7b7388ac00000000");
     transaction new_tx;
-    new_tx.from_data(tx_data);
+    BOOST_REQUIRE(new_tx.from_data(tx_data));
 
     script prevout_script;
-    BOOST_REQUIRE(prevout_script.from_string("dup hash160 [ 88350574280395ad2c3e2ee20e322073d94e5e40 ] equalverify checksig"));
+    BOOST_REQUIRE(prevout_script.from_string("dup hash160 [88350574280395ad2c3e2ee20e322073d94e5e40] equalverify checksig"));
 
     const ec_secret secret = hash_literal("ce8f4b713ffdd2658900845251890f30371856be201cd1f5b3d970f793634333");
 
@@ -553,10 +553,10 @@ BOOST_AUTO_TEST_CASE(script__create_endorsement__single_input_no_output__expecte
     data_chunk tx_data;
     decode_base16(tx_data, "0100000001b3807042c92f449bbf79b33ca59d7dfec7f4cc71096704a9c526dddf496ee0970000000000ffffffff0000000000");
     transaction new_tx;
-    new_tx.from_data(tx_data);
+    BOOST_REQUIRE(new_tx.from_data(tx_data));
 
     script prevout_script;
-    BOOST_REQUIRE(prevout_script.from_string("dup hash160 [ 88350574280395ad2c3e2ee20e322073d94e5e40 ] equalverify checksig"));
+    BOOST_REQUIRE(prevout_script.from_string("dup hash160 [88350574280395ad2c3e2ee20e322073d94e5e40] equalverify checksig"));
 
     const ec_secret secret = hash_literal("ce8f4b713ffdd2658900845251890f30371856be201cd1f5b3d970f793634333");
 
@@ -575,10 +575,10 @@ BOOST_AUTO_TEST_CASE(script__generate_signature_hash__all__expected)
     data_chunk tx_data;
     decode_base16(tx_data, "0100000001b3807042c92f449bbf79b33ca59d7dfec7f4cc71096704a9c526dddf496ee0970000000000ffffffff0000000000");
     transaction new_tx;
-    new_tx.from_data(tx_data);
+    BOOST_REQUIRE(new_tx.from_data(tx_data));
 
     script prevout_script;
-    BOOST_REQUIRE(prevout_script.from_string("dup hash160 [ 88350574280395ad2c3e2ee20e322073d94e5e40 ] equalverify checksig"));
+    BOOST_REQUIRE(prevout_script.from_string("dup hash160 [88350574280395ad2c3e2ee20e322073d94e5e40] equalverify checksig"));
 
     endorsement out;
     const uint32_t input_index = 0;

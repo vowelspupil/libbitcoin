@@ -30,6 +30,9 @@
 namespace libbitcoin {
 namespace chain {
 
+// These patterns are not consensus critical.
+// They are used with policy and for payment address extraction.
+
 bool is_push_only(const operation_stack& ops)
 {
     const auto push = [](const operation& op)

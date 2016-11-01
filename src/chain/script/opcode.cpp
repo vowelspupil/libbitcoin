@@ -30,10 +30,10 @@ namespace libbitcoin {
 namespace chain {
 
 #define RETURN_IF_OPCODE(text, code) \
-if (normal == text) { out_code = opcode::code; return true; }
+if (norm == text) { out_code = opcode::code; return true; }
 
 #define RETURN_IF_OPCODE_OR_ALIAS(text, alias, code) \
-if (normal == text || value == alias) { out_code = opcode::code; return true; }
+if (norm == text || norm == alias) { out_code = opcode::code; return true; }
 
 // TODO: convert this to a static bimap (with exception for nop2).
 std::string opcode_to_string(opcode value, uint32_t active_forks)
@@ -407,7 +407,7 @@ std::string opcode_to_string(opcode value, uint32_t active_forks)
 bool opcode_from_string(opcode& out_code, const std::string& value)
 {
     // Normalize to ASCII lower case.
-    const auto normal = boost::algorithm::to_lower_copy(value);
+    const auto norm = boost::algorithm::to_lower_copy(value);
 
     RETURN_IF_OPCODE("zero", push_size_0);
     RETURN_IF_OPCODE("push_0", push_size_0);
@@ -682,7 +682,7 @@ bool opcode_from_hexadecimal(opcode& out_code, const std::string& value)
         return false;
 
     data_chunk out;
-    if (!decode_base16(out, value))
+    if (!decode_base16(out, std::string(value.begin() + 2, value.end())))
         return false;
 
     out_code = static_cast<opcode>(out.front());

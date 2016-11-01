@@ -153,6 +153,7 @@ public:
 
 protected:
     void reset();
+    bool is_push_data(opcode code) const;
     bool is_push_data_only() const;
     const data_chunk& bytes() const;
     const operation_stack& stack() const;

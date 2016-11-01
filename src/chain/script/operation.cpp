@@ -160,6 +160,7 @@ bool operation::from_data(reader& source)
 {
     reset();
 
+    valid_ = true;
     code_ = static_cast<opcode>(source.read_byte());
     const auto size = read_data_size(code_, source);
 
@@ -206,7 +207,7 @@ bool operation::from_string(const std::string& mnemonic)
 
 bool operation::is_valid() const
 {
-    return valid_ || code_ != opcode::push_size_0 || !data_.empty();
+    return valid_;
 }
 
 // protected
@@ -303,6 +304,7 @@ opcode operation::code() const
 
 void operation::set_code(opcode code)
 {
+    valid_ = true;
     code_ = code;
 }
 
@@ -313,11 +315,13 @@ const data_chunk& operation::data() const
 
 void operation::set_data(data_chunk&& data)
 {
+    valid_ = true;
     data_ = std::move(data);
 }
 
 void operation::set_data(const data_chunk& data)
 {
+    valid_ = true;
     data_ = data;
 }
 

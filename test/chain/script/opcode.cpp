@@ -239,18 +239,18 @@ BOOST_AUTO_TEST_CASE(opcode__opcode_from_string__push_one__push_one_size)
     BOOST_REQUIRE(out_code == opcode::push_one_size);
 }
 
-BOOST_AUTO_TEST_CASE(opcode__opcode_from_string__push_two__push_one_size)
+BOOST_AUTO_TEST_CASE(opcode__opcode_from_string__push_two__push_two_size)
 {
     opcode out_code;
     BOOST_REQUIRE(opcode_from_string(out_code, "push_two"));
-    BOOST_REQUIRE(out_code == opcode::push_one_size);
+    BOOST_REQUIRE(out_code == opcode::push_two_size);
 }
 
-BOOST_AUTO_TEST_CASE(opcode__opcode_from_string__push_four__push_one_size)
+BOOST_AUTO_TEST_CASE(opcode__opcode_from_string__push_four__push_four_size)
 {
     opcode out_code;
     BOOST_REQUIRE(opcode_from_string(out_code, "push_four"));
-    BOOST_REQUIRE(out_code == opcode::push_one_size);
+    BOOST_REQUIRE(out_code == opcode::push_four_size);
 }
 
 BOOST_AUTO_TEST_CASE(opcode__opcode_from_string__pushdata1__push_one_size)
@@ -260,18 +260,18 @@ BOOST_AUTO_TEST_CASE(opcode__opcode_from_string__pushdata1__push_one_size)
     BOOST_REQUIRE(out_code == opcode::push_one_size);
 }
 
-BOOST_AUTO_TEST_CASE(opcode__opcode_from_string__pushdata2__push_one_size)
+BOOST_AUTO_TEST_CASE(opcode__opcode_from_string__pushdata2_push_two_size)
 {
     opcode out_code;
     BOOST_REQUIRE(opcode_from_string(out_code, "pushdata2"));
-    BOOST_REQUIRE(out_code == opcode::push_one_size);
+    BOOST_REQUIRE(out_code == opcode::push_two_size);
 }
 
-BOOST_AUTO_TEST_CASE(opcode__opcode_from_string__pushdata4__push_one_size)
+BOOST_AUTO_TEST_CASE(opcode__opcode_from_string__pushdata4__push_four_size)
 {
     opcode out_code;
     BOOST_REQUIRE(opcode_from_string(out_code, "pushdata4"));
-    BOOST_REQUIRE(out_code == opcode::push_one_size);
+    BOOST_REQUIRE(out_code == opcode::push_four_size);
 }
 
 // negative one
@@ -593,7 +593,7 @@ BOOST_AUTO_TEST_CASE(opcode__opcode_from_hexadecimal__8_bits__false)
     BOOST_REQUIRE(!opcode_from_hexadecimal(out_code, "0xf"));
 }
 
-BOOST_AUTO_TEST_CASE(opcode__opcode_from_hexadecimal__14_bits__expected)
+BOOST_AUTO_TEST_CASE(opcode__opcode_from_hexadecimal__16_bits__expected)
 {
     opcode out_code;
     BOOST_REQUIRE(opcode_from_hexadecimal(out_code, "0xff"));
@@ -615,7 +615,7 @@ BOOST_AUTO_TEST_CASE(opcode__opcode_from_hexadecimal__48_bits__false)
 BOOST_AUTO_TEST_CASE(opcode__opcode_from_hexadecimal__upper_case__expected)
 {
     opcode out_code;
-    BOOST_REQUIRE(opcode_from_hexadecimal(out_code, "0xfe"));
+    BOOST_REQUIRE(opcode_from_hexadecimal(out_code, "0xFE"));
     BOOST_REQUIRE(out_code == opcode::reserved_254);
 }
 

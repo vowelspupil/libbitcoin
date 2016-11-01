@@ -646,9 +646,25 @@ bool script::is_enabled(uint32_t flags, rule_fork flag)
     return (flag & flags) != 0;
 }
 
+//*****************************************************************************
+// CONSENSUS: this includes opcode::reserved_80 despite it being reserved.
+//*****************************************************************************
+bool script::is_push_data(opcode code) const
+{
+    static constexpr auto op_96 = static_cast<uint8_t>(opcode::push_positive_16);
+
+    const auto value = static_cast<uint8_t>(code);
+    return value <= op_96;
+}
+
 bool script::is_push_data_only() const
 {
-    return is_push_only(stack());
+    const auto push = [&](const operation& op)
+    {
+        return is_push_data(op.code());
+    };
+
+    return std::all_of(stack().begin(), stack().end(), push);
 }
 
 script_pattern script::pattern() const
