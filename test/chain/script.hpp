@@ -162,11 +162,8 @@ const script_test_list valid_context_free_scripts
     { "0", "IF 0x50 ENDIF 1", "0x50 is reserved (ok if not executed)" },
     { "0x51", "0x5f ADD 0x60 EQUAL", "0x51 through 0x60 push 1 through 16 onto stack" },
     { "1", "NOP", "" },
-
-    // TODO: verify this was a recent addition.
-    ////{ "0", "IF VER VERIF VERNOTIF ELSE 1 ENDIF", "VERX reserved (ok if not executed)" },
-
-    { "0", "IF VER RESERVED RESERVED1 RESERVED2 ELSE 1 ENDIF", "VER/RESERVEDX reserved (ok if not executed)" },
+    { "0", "IF VER ELSE 1 ENDIF", "VER non-functional (ok if not executed)" },
+    { "0", "IF RESERVED RESERVED1 RESERVED2 ELSE 1 ENDIF", "RESERVED ok in un-executed IF" },
     { "1", "DUP IF ENDIF", "" },
     { "1", "IF 1 ENDIF", "" },
     { "1", "DUP IF ELSE ENDIF", "" },
