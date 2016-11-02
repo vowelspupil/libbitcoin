@@ -109,15 +109,18 @@ script::script(const data_chunk& bytes, bool prefix)
 // Operators.
 //-----------------------------------------------------------------------------
 
+// Concurrent read/write is not supported, so no critical section.
 script& script::operator=(script&& other)
 {
     // TODO: implement safe private accessor for conditional cache transfer.
     reset();
+
     bytes_ = std::move(other.bytes_);
     valid_ = other.valid_;
     return *this;
 }
 
+// Concurrent read/write is not supported, so no critical section.
 script& script::operator=(const script& other)
 {
     // TODO: implement safe private accessor for conditional cache transfer.
@@ -176,6 +179,7 @@ bool script::from_data(std::istream& stream, bool prefix)
     return from_data(source, prefix);
 }
 
+// Concurrent read/write is not supported, so no critical section.
 bool script::from_data(reader& source, bool prefix)
 {
     reset();
@@ -191,6 +195,7 @@ bool script::from_data(reader& source, bool prefix)
     return source;
 }
 
+// Concurrent read/write is not supported, so no critical section.
 bool script::from_string(const std::string& mnemonic)
 {
     reset();
@@ -208,6 +213,7 @@ bool script::from_string(const std::string& mnemonic)
     return from_stack(ops);
 }
 
+// Concurrent read/write is not supported, so no critical section.
 bool script::from_stack(const operation_stack& ops)
 {
     reset();
@@ -233,7 +239,7 @@ bool script::stack_to_data(data_chunk& out, const operation_stack& ops)
     for (const auto& op: ops)
     {
         const auto operation = op.to_data();
-        
+
         if (!op.is_valid())
             return false;
 
@@ -257,6 +263,7 @@ size_t script::serialized_size(const operation_stack& ops)
 }
 
 // protected
+// Concurrent read/write is not supported, so no critical section.
 void script::reset()
 {
     bytes_.clear();
@@ -579,13 +586,13 @@ hash_digest script::generate_signature_hash(const transaction& tx,
         (input_index >= tx.outputs().size() && single))
     {
         //*********************************************************************
-        // Wacky satoshi consensus behavior we must perpetuate.
+        // CONSENSUS: wacky satoshi behavior we must perpetuate.
         //*********************************************************************
         return one_hash;
     }
 
     //*************************************************************************
-    // More wacky satoshi consensus behavior we must perpetuate.
+    // CONSENSUS: more wacky satoshi behavior we must perpetuate.
     //*************************************************************************
     const auto stripped = strip_code_seperators(script_code);
 

@@ -473,7 +473,7 @@ BOOST_AUTO_TEST_CASE(script__context_free__invalid)
 }
 
 // These are special tests for checksig.
-BOOST_AUTO_TEST_CASE(script__checksig__uses_one_hash)
+BOOST_AUTO_TEST_CASE(script__checksig__single__uses_one_hash)
 {
     // input 315ac7d4c26d69668129cc352851d9389b4a6868f1509c6c8b66bead11e2619f:1
     data_chunk tx_data;
@@ -500,7 +500,7 @@ BOOST_AUTO_TEST_CASE(script__checksig__uses_one_hash)
     BOOST_REQUIRE(script::check_signature(signature, sighash_algorithm::single, pubkey, script_code, parent_tx, input_index));
 }
 
-BOOST_AUTO_TEST_CASE(script__checksig__normal)
+BOOST_AUTO_TEST_CASE(script__checksig__normal__success)
 {
     // input 315ac7d4c26d69668129cc352851d9389b4a6868f1509c6c8b66bead11e2619f:0
     data_chunk tx_data;
