@@ -514,7 +514,7 @@ BOOST_AUTO_TEST_CASE(transaction__version__roundtrip__success)
 {
     uint32_t version = 1254u;
     chain::transaction instance;
-    BOOST_REQUIRE(!version == instance.version());
+    BOOST_REQUIRE(version != instance.version());
     instance.set_version(version);
     BOOST_REQUIRE_EQUAL(version, instance.version());
 }
@@ -523,7 +523,7 @@ BOOST_AUTO_TEST_CASE(transaction__locktime__roundtrip__success)
 {
     uint32_t locktime = 1254u;
     chain::transaction instance;
-    BOOST_REQUIRE(!locktime == instance.locktime());
+    BOOST_REQUIRE(locktime != instance.locktime());
     instance.set_locktime(locktime);
     BOOST_REQUIRE_EQUAL(locktime, instance.locktime());
 }
