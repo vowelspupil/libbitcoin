@@ -257,16 +257,14 @@ chain_state::map chain_state::get_map(size_t height, bool enabled,
     map.bits.high = height - 1;
 
     // Mainnet doesn't do retarget search.
-    map.bits.count = testnet ? 
-        std::min(map.bits.high, retargeting_interval) : 0;
+    map.bits.count = testnet ? std::min(height, retargeting_interval) : 0;
 
     // Timestamp.
     //-------------------------------------------------------------------------
     // The height bound of the median time past function.
     // Height must be a positive multiple of interval, so underflow safe.
     map.timestamp.high = height - 1;
-    map.timestamp.count = 
-        std::min(map.timestamp.high, median_time_past_interval);
+    map.timestamp.count = std::min(height, median_time_past_interval);
 
     // Additional timestamps required (or zero for not).
     map.timestamp_self = height;
@@ -278,7 +276,7 @@ chain_state::map chain_state::get_map(size_t height, bool enabled,
     // The height bound of the version sample for activations.
     map.version.high = height - 1;
     map.version.count = enabled ? 
-        std::min(map.version.high, version_sample_size(testnet)) : 0;
+        std::min(height, version_sample_size(testnet)) : 0;
 
     // If too small to activate set count to zero to avoid unnecessary queries.
     map.version.count = is_active(map.version.count, testnet) ?

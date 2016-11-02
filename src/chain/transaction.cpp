@@ -53,20 +53,15 @@ const size_t transaction::validation::unspecified_height = 0;
 template<class Source, class Put>
 bool read(Source& source, std::vector<Put>& puts, bool wire)
 {
-    const auto size = source.read_size_little_endian();
-    puts.reserve(size);
-    Put put;
-
-    // Order is required.
-    for (size_t index = 0; index < size; ++index)
+    auto result = true;
+    puts.resize(source.read_size_little_endian());
+    const auto deserialize = [&result, &source, wire](Put& put)
     {
-        if (!put.from_data(source, wire))
-            return false;
+        result &= put.from_data(source, wire);
+    };
 
-        puts.emplace_back(std::move(put));
-    }
-
-    return true;
+    std::for_each(puts.begin(), puts.end(), deserialize);
+    return result;
 }
 
 // Write a length-prefixed collection of inputs or outputs to the sink.
