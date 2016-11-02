@@ -35,10 +35,9 @@
 #include <bitcoin/bitcoin/math/hash.hpp>
 #include <bitcoin/bitcoin/math/script_number.hpp>
 #include <bitcoin/bitcoin/utility/assert.hpp>
-#include <bitcoin/bitcoin/utility/container_sink.hpp>
 #include <bitcoin/bitcoin/utility/container_source.hpp>
+#include <bitcoin/bitcoin/utility/data.hpp>
 #include <bitcoin/bitcoin/utility/istream_reader.hpp>
-#include <bitcoin/bitcoin/utility/ostream_writer.hpp>
 
 namespace libbitcoin {
 namespace chain {
@@ -50,16 +49,9 @@ enum class signature_parse_result
     lax_encoding
 };
 
-typedef const data_chunk::const_iterator& iterator;
-
-static bool starts_with(const data_chunk& bytes, iterator begin, iterator end)
-{
-    BITCOIN_ASSERT_MSG(begin >= end, "error in find_and_delete");
-
-    return static_cast<size_t>(std::distance(begin, end)) >= bytes.size() &&
-        std::equal(bytes.begin(), bytes.end(), begin);
-}
-
+//*****************************************************************************
+// CONSENSUS: this is a pointless, broken, premature optimization attempt.
+//*****************************************************************************
 static void find_and_delete(data_chunk& buffer, const data_chunk& removal)
 {
     // Use an iterator for matching and editing the buffer.
@@ -75,7 +67,7 @@ static void find_and_delete(data_chunk& buffer, const data_chunk& removal)
 
     while (!ops.is_exhausted())
     {
-        while (starts_with(removal, begin, end))
+        while (starts_with(begin, end, removal))
         {
             ops.skip(size);
             begin = buffer.erase(begin, begin + size);
@@ -87,13 +79,10 @@ static void find_and_delete(data_chunk& buffer, const data_chunk& removal)
     }
 }
 
-//*****************************************************************************
-// CONSENSUS: this is a pointless, broken, premature optimization attempt.
-//*****************************************************************************
 static script create_subscript(const evaluation_context& context,
     const data_stack& removals)
 {
-    // Create a serialized operations buffer for mutation.
+    // Create a serialized operations buffer for pointless mutation.
     auto buffer = context.subscript().data();
 
     // Mutate the buffer by removing matches.
