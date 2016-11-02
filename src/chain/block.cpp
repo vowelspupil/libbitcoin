@@ -205,7 +205,7 @@ bool block::from_data(reader& source)
 // private
 void block::reset()
 {
-    header_ = chain::header{};
+    header_.reset();
     transactions_.clear();
     transactions_.shrink_to_fit();
 }

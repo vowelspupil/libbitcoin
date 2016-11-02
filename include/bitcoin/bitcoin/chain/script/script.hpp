@@ -41,7 +41,7 @@
 namespace libbitcoin {
 namespace chain {
 
-class BC_API transaction;
+class transaction;
 
 class BC_API script
 {
@@ -117,6 +117,7 @@ public:
 
     uint64_t satoshi_content_size() const;
     uint64_t serialized_size(bool prefix) const;
+    const data_chunk& data() const;
 
     // Signing.
     //-------------------------------------------------------------------------
@@ -152,10 +153,13 @@ public:
         const script& prevout_script, uint32_t flags);
 
 protected:
+    // So that input and output may call reset from their own.
+    friend class input;
+    friend class output;
+
     void reset();
     bool is_relaxed_push_data_only() const;
     bool is_relaxed_push_data(opcode code) const;
-    const data_chunk& bytes() const;
     const operation_stack& stack() const;
 
 private:

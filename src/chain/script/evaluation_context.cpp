@@ -143,6 +143,17 @@ uint32_t evaluation_context::flags() const
 /// Stack info.
 //-----------------------------------------------------------------------------
 
+// pop jump-to-end, push all back, use to construct a script
+script evaluation_context::subscript() const
+{
+    operation_stack ops;
+
+    for (auto op = jump(); op != end(); ++op)
+        ops.push_back(*op);
+
+    return script(std::move(ops));
+}
+
 const data_stack::value_type& evaluation_context::item(size_t index) const
 {
     return *position(index);

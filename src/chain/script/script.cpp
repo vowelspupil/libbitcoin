@@ -392,8 +392,7 @@ uint64_t script::serialized_size(bool prefix) const
     return size;
 }
 
-// protected
-const data_chunk& script::bytes() const
+const data_chunk& script::data() const
 {
     return bytes_;
 }

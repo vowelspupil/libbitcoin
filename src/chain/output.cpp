@@ -163,7 +163,7 @@ bool output::from_data(reader& source, bool wire)
 void output::reset()
 {
     value_ = output::not_found;
-    script_ = chain::script{};
+    script_.reset();
 }
 
 // Empty scripts are valid, validation relies on not_found only.

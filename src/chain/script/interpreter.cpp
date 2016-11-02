@@ -35,8 +35,10 @@
 #include <bitcoin/bitcoin/math/hash.hpp>
 #include <bitcoin/bitcoin/math/script_number.hpp>
 #include <bitcoin/bitcoin/utility/assert.hpp>
+#include <bitcoin/bitcoin/utility/container_sink.hpp>
 #include <bitcoin/bitcoin/utility/container_source.hpp>
 #include <bitcoin/bitcoin/utility/istream_reader.hpp>
+#include <bitcoin/bitcoin/utility/ostream_writer.hpp>
 
 namespace libbitcoin {
 namespace chain {
@@ -48,59 +50,59 @@ enum class signature_parse_result
     lax_encoding
 };
 
-//*****************************************************************************
-// CONSENSUS: Satoshi has a bug in FindAndDelete that we do not reproduce.
-// The find_and_delete function emulates it and can be used in place of this.
-//*****************************************************************************
-static script create_subscript(const evaluation_context& context,
-    const data_stack& endorsements)
+typedef const data_chunk::const_iterator& iterator;
+
+static bool starts_with(const data_chunk& bytes, iterator begin, iterator end)
 {
-    operation_stack ops;
-    const auto& end = endorsements.end();
-    const auto& begin = endorsements.begin();
+    BITCOIN_ASSERT_MSG(begin >= end, "error in find_and_delete");
 
-    const auto is_endorsement = [&](const data_chunk& data)
-    {
-        return std::find(begin, end, data) != end;
-    };
-
-    // Create an operation stack for the subscript starting at jump register.
-    // Remove matching endorsements from the subscript (optimization).
-    for (auto op = context.jump(); op != context.end(); ++op)
-        if (!is_endorsement(op->data()))
-            ops.push_back(*op);
-
-    // Generate a script from the remaining operations.
-    return script(std::move(ops));
+    return static_cast<size_t>(std::distance(begin, end)) >= bytes.size() &&
+        std::equal(bytes.begin(), bytes.end(), begin);
 }
 
-static script find_and_delete(const evaluation_context& context,
-    const data_stack& endorsements)
+static void find_and_delete(data_chunk& buffer, const data_chunk& removal)
 {
-    operation_stack ops;
+    // Use an iterator for matching and editing the buffer.
+    auto begin = buffer.begin();
+    auto end = buffer.end();
+    const auto size = removal.size();
 
-    // Create an operation stack for the subscript starting at jump register.
-    for (auto pc = context.jump(); pc != context.end(); ++pc)
-        ops.push_back(*pc);
-
-    // Serialize the operations as an unprefixed script buffer.
-    auto buffer = script(std::move(ops)).to_data(false);
-
-    // Evaluate the full buffer for each endorsement.
+    // Use an op stream over a buffer copy to obtain opcodes and sizes.
+    auto copy = buffer;
+    data_source stream(copy);
+    istream_reader ops(stream);
     operation op;
-    data_source stream(buffer);
-    istream_reader source(stream);
 
-    // TODO:
-    // If an opcode fails to parse just move on to the next endorsement.
-    do
+    while (!ops.is_exhausted())
     {
-        op.from_data(source);
-    }
-    while (!source.is_exhausted());
+        while (starts_with(removal, begin, end))
+        {
+            ops.skip(size);
+            begin = buffer.erase(begin, begin + size);
+            end -= size;
+        }
 
-    // Generate a script from the mutated buffer, regardless of failures.
-    return script(std::move(buffer), false);
+        op.from_data(ops);
+        begin += op.serialized_size();
+    }
+}
+
+//*****************************************************************************
+// CONSENSUS: this is a pointless, broken, premature optimization attempt.
+//*****************************************************************************
+static script create_subscript(const evaluation_context& context,
+    const data_stack& removals)
+{
+    // Create a serialized operations buffer for mutation.
+    auto buffer = context.subscript().data();
+
+    // Mutate the buffer by removing matches.
+    for (auto& removal: removals)
+        find_and_delete(buffer, removal);
+
+    // Return script created from mutated operations buffer.
+    // Script deserialization cannot fail unless an invalid prefix is used.
+    return script::factory_from_data(buffer, false);
 }
 
 // Operations.

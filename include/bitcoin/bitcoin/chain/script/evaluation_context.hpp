@@ -63,6 +63,7 @@ public:
     uint32_t flags() const;
 
     /// Stack info.
+    script subscript() const;
     const value_type& item(size_t index) const;
     stack_iterator position(size_t index) const;
     bool is_short_circuited(const operation& op) const;

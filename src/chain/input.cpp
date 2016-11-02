@@ -146,8 +146,8 @@ bool input::from_data(reader& source, bool)
 
 void input::reset()
 {
-    previous_output_ = chain::output_point{};
-    script_ = chain::script{};
+    previous_output_.reset();
+    script_.reset();
     sequence_ = 0;
 }
 

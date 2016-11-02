@@ -53,12 +53,18 @@ const size_t transaction::validation::unspecified_height = 0;
 template<class Source, class Put>
 bool read(Source& source, std::vector<Put>& puts, bool wire)
 {
-    puts.resize(source.read_size_little_endian());
+    const auto size = source.read_size_little_endian();
+    puts.reserve(size);
+    Put put;
 
     // Order is required.
-    for (auto& put: puts)
+    for (size_t index = 0; index < size; ++index)
+    {
         if (!put.from_data(source, wire))
             return false;
+
+        puts.emplace_back(std::move(put));
+    }
 
     return true;
 }

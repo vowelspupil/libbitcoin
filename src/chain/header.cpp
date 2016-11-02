@@ -178,7 +178,7 @@ bool header::from_data(std::istream& stream)
 
 bool header::from_data(reader& source)
 {
-    reset();
+    ////reset();
 
     version_ = source.read_4_bytes_little_endian();
     previous_block_hash_ = source.read_hash();

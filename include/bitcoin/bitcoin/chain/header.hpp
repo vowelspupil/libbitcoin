@@ -150,6 +150,9 @@ public:
     mutable validation validation;
 
 protected:
+    // So that block may call reset from its own.
+    friend class block;
+
     void reset();
     void invalidate_cache() const;
 
