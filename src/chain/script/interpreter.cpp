@@ -49,51 +49,6 @@ enum class signature_parse_result
     lax_encoding
 };
 
-//*****************************************************************************
-// CONSENSUS: this is a pointless, broken, premature optimization attempt.
-//*****************************************************************************
-static void find_and_delete(data_chunk& buffer, const data_chunk& removal)
-{
-    // Use an iterator for matching and editing the buffer.
-    auto begin = buffer.begin();
-    auto end = buffer.end();
-    const auto size = removal.size();
-
-    // Use an op stream over a buffer copy to obtain opcodes and sizes.
-    auto copy = buffer;
-    data_source stream(copy);
-    istream_reader ops(stream);
-    operation op;
-
-    while (!ops.is_exhausted())
-    {
-        while (starts_with(begin, end, removal))
-        {
-            ops.skip(size);
-            begin = buffer.erase(begin, begin + size);
-            end -= size;
-        }
-
-        op.from_data(ops);
-        begin += op.serialized_size();
-    }
-}
-
-static script create_subscript(const evaluation_context& context,
-    const data_stack& removals)
-{
-    // Create a serialized operations buffer for pointless mutation.
-    auto buffer = context.subscript().data();
-
-    // Mutate the buffer by removing matches.
-    for (auto& removal: removals)
-        find_and_delete(buffer, removal);
-
-    // Return script created from mutated operations buffer.
-    // Script deserialization cannot fail unless an invalid prefix is used.
-    return script::factory_from_data(buffer, false);
-}
-
 // Operations.
 //-----------------------------------------------------------------------------
 // shared handler
@@ -763,7 +718,8 @@ static signature_parse_result op_check_sig_verify(evaluation_context& context,
             signature_parse_result::invalid;
 
     // Create a subscript with endorsements stripped.
-    const auto script_code = create_subscript(context, { endorsement });
+    auto script_code = context.subscript();
+    script_code.purge({ endorsement });
 
     return script::check_signature(signature, sighash_type, pubkey,
         script_code, tx, input_index) ? signature_parse_result::valid :
@@ -824,7 +780,9 @@ static signature_parse_result op_check_multisig_verify(
     context.pop();
 
     // Create a subscript with endorsements stripped.
-    const auto script_code = create_subscript(context, endorsements);
+    auto script_code = context.subscript();
+    script_code.purge(endorsements);
+
     auto strict = script::is_enabled(context.flags(), rule_fork::bip66_rule);
     auto pubkey_iterator = pubkeys.begin();
 

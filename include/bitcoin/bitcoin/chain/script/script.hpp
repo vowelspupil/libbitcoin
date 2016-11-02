@@ -117,7 +117,6 @@ public:
 
     uint64_t satoshi_content_size() const;
     uint64_t serialized_size(bool prefix) const;
-    const data_chunk& data() const;
 
     // Signing.
     //-------------------------------------------------------------------------
@@ -143,6 +142,9 @@ public:
     size_t sigops(bool embedded) const;
     size_t pay_script_hash_sigops(const script& prevout_script) const;
 
+    // Remove values from the stack using satoshi's awful find_and_delete.
+    void purge(const data_stack& endorsements);
+
     // Validation.
     //-------------------------------------------------------------------------
 
@@ -160,15 +162,16 @@ protected:
     void reset();
     bool is_relaxed_push_data_only() const;
     bool is_relaxed_push_data(opcode code) const;
+    bool is_pay_to_script_hash(uint32_t flags) const;
+    const data_chunk& data() const;
     const operation_stack& stack() const;
+    void find_and_delete(const data_chunk& endorsement);
 
 private:
     static size_t serialized_size(const operation_stack& ops);
     static bool stack_to_data(data_chunk& out, const operation_stack& ops);
     static code pay_hash(const transaction& tx, uint32_t input_index,
         const script& input_script, evaluation_context& input_context);
-
-    bool is_pay_to_script_hash(uint32_t flags) const;
 
     data_chunk bytes_;
     bool valid_;

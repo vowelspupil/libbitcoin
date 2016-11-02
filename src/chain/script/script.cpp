@@ -771,6 +771,58 @@ size_t script::pay_script_hash_sigops(const script& prevout_script) const
     return embedded.sigops(true);
 }
 
+//*****************************************************************************
+// CONSENSUS: this is a pointless, broken, premature optimization attempt.
+//*****************************************************************************
+void script::find_and_delete(const data_chunk& endorsement)
+{
+    // If this is empty it would produce an empty script but not operation.
+    // So we test it for empty prior to operation reserialization.
+    if (endorsement.empty())
+        return;
+
+    // The value must be serialized using minimal encoding.
+    // Non-minimally-encoded script values will not match this.
+    const auto op_value = operation(endorsement).to_data();
+    const auto size = op_value.size();
+
+    // Use an iterator for matching and editing the buffer.
+    auto begin = bytes_.begin();
+    auto end = bytes_.end();
+
+    // Use an op stream over a buffer copy to obtain opcodes and sizes.
+    auto copy = bytes_;
+    data_source stream(copy);
+    istream_reader ops(stream);
+    operation op;
+
+    // Walk over the shrinking buffer obtaining remaining ops via the stream.
+    while (!ops.is_exhausted())
+    {
+        while (starts_with(begin, end, op_value))
+        {
+            ops.skip(size);
+            begin = bytes_.erase(begin, begin + size);
+            end -= size;
+        }
+
+        op.from_data(ops);
+        begin += op.serialized_size();
+    }
+}
+
+// Concurrent read/write is not supported, so no critical section.
+void script::purge(const data_stack& endorsements)
+{
+    for (auto& endorsement: endorsements)
+        find_and_delete(endorsement);
+
+    // Invalidate the cache so that the op stack may be regenerated.
+    stack_.clear();
+    cached_ = false;
+    bytes_.shrink_to_fit();
+}
+
 // Validation.
 //-----------------------------------------------------------------------------
 // static

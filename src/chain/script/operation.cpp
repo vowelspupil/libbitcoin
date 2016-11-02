@@ -348,6 +348,9 @@ uint32_t operation::read_data_size(opcode code, reader& source)
     }
 }
 
+//*****************************************************************************
+// CONSENSUS: minimal encoding is consensus critical due to find_and_delete.
+//*****************************************************************************
 opcode operation::opcode_from_size(size_t size)
 {
     // Satoshi simply casts size to 4 bytes but writes size bytes.
