@@ -30,9 +30,6 @@
 namespace libbitcoin {
 namespace chain {
 
-// These patterns are not consensus critical.
-// They are used with policy and for payment address extraction.
-
 bool is_push_only(const operation_stack& ops)
 {
     const auto push = [](const operation& op)
@@ -99,11 +96,14 @@ bool is_pay_key_hash_pattern(const operation_stack& ops)
         && ops[4].code() == opcode::checksig;
 }
 
+//*****************************************************************************
+// CONSENSUS: this pattern is used to activate bip16 validation rules.
+//*****************************************************************************
 bool is_pay_script_hash_pattern(const operation_stack& ops)
 {
     return ops.size() == 3
         && ops[0].code() == opcode::hash160
-        && ops[1].is_push()
+        && ops[1].code() == opcode::push_size_20
         && ops[1].data().size() == short_hash_size
         && ops[2].code() == opcode::equal;
 }

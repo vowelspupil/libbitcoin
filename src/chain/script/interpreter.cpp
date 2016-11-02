@@ -941,11 +941,14 @@ static bool op_check_locktime_verify(evaluation_context& context,
 // * fail signature check if there is no context.transaction/input_index.
 //_____________________________________________________________________________
 
-// See BIP16 for max_data_script_size.
 // The script paramter is NOT always tx.indexes[input_index].script.
 bool interpreter::run(const transaction& tx, uint32_t input_index,
     const script& script, evaluation_context& context)
 {
+    // SCRIPT_VERIFY_SIGPUSHONLY
+    ////if (!script.is_relaxed_push_data_only())
+    ////    return false;
+
     if (!context.set_script(script))
         return false;
 
@@ -968,6 +971,10 @@ bool interpreter::run(const transaction& tx, uint32_t input_index,
         if (context.is_stack_overflow())
             return false;
     }
+
+    // SCRIPT_VERIFY_CLEANSTACK
+    ////if (!context.stack.empty())
+    ////    return false;
 
     // Confirm that scopes are paired.
     return context.condition.closed();

@@ -47,13 +47,22 @@ evaluation_context::evaluation_context(uint32_t flags)
     stack.reserve(stack_capactity);
 }
 
-// Iterators must be set via run.
+// Iterators must be set via set_script.
+evaluation_context::evaluation_context(uint32_t flags, data_stack&& value)
+  : op_count_(0), flags_(flags), condition(condition_capactity)
+{
+    stack = std::move(value);
+    stack.reserve(stack_capactity);
+    alternate.reserve(alternate_capactity);
+}
+
+// Iterators must be set via set_script.
 evaluation_context::evaluation_context(uint32_t flags, const data_stack& value)
   : op_count_(0), flags_(flags), condition(condition_capactity)
 {
-    alternate.reserve(alternate_capactity);
-    stack.reserve(stack_capactity);
     stack = value;
+    stack.reserve(stack_capactity);
+    alternate.reserve(alternate_capactity);
 }
 
 // Instructions.

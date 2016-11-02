@@ -615,10 +615,6 @@ size_t transaction::signature_operations(bool bip16_active) const
         return ceiling_add(total, output.signature_operations());
     };
 
-    //*************************************************************************
-    // CONSENSUS: Signature operations are counted in coinbase signature
-    // scripts despite the fact that those scripts are never executed.
-    //*************************************************************************
     return std::accumulate(inputs_.begin(), inputs_.end(), size_t{0}, in) +
         std::accumulate(outputs_.begin(), outputs_.end(), size_t{0}, out);
 }

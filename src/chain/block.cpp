@@ -448,8 +448,9 @@ size_t block::signature_operations(bool bip16_active) const
     };
 
     //*************************************************************************
-    // CONSENSUS: Signature operations are counted in coinbase signature
-    // scripts despite the fact that those scripts are never executed.
+    // CONSENSUS: Legacy sigops are counted in coinbase scripts despite the
+    // fact that coinbase input scripts are never executed. There is no need
+    // to exclude p2sh coinbsae sigops since there is never a script to count.
     //*************************************************************************
     const auto& txs = transactions_;
     return std::accumulate(txs.begin(), txs.end(), size_t{0}, value);

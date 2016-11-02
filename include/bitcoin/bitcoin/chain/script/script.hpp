@@ -139,8 +139,8 @@ public:
     static bool is_enabled(uint32_t active_forks, rule_fork flag);
 
     script_pattern pattern() const;
-    size_t sigops(bool serialized_script) const;
-    size_t pay_script_hash_sigops(const script& prevout) const;
+    size_t sigops(bool embedded) const;
+    size_t pay_script_hash_sigops(const script& prevout_script) const;
 
     // Validation.
     //-------------------------------------------------------------------------
@@ -153,8 +153,8 @@ public:
 
 protected:
     void reset();
-    bool is_push_data(opcode code) const;
-    bool is_push_data_only() const;
+    bool is_relaxed_push_data_only() const;
+    bool is_relaxed_push_data(opcode code) const;
     const data_chunk& bytes() const;
     const operation_stack& stack() const;
 

@@ -640,7 +640,6 @@ bool script::create_endorsement(endorsement& out, const ec_secret& secret,
 //-----------------------------------------------------------------------------
 
 // static
-// Test rule_fork flag for a given context.
 bool script::is_enabled(uint32_t flags, rule_fork flag)
 {
     return (flag & flags) != 0;
@@ -648,20 +647,20 @@ bool script::is_enabled(uint32_t flags, rule_fork flag)
 
 //*****************************************************************************
 // CONSENSUS: this includes opcode::reserved_80 despite it being reserved.
+// This affects the operation count in p2sh script evaluation.
 //*****************************************************************************
-bool script::is_push_data(opcode code) const
+bool script::is_relaxed_push_data(opcode code) const
 {
     static constexpr auto op_96 = static_cast<uint8_t>(opcode::push_positive_16);
-
     const auto value = static_cast<uint8_t>(code);
     return value <= op_96;
 }
 
-bool script::is_push_data_only() const
+bool script::is_relaxed_push_data_only() const
 {
     const auto push = [&](const operation& op)
     {
-        return is_push_data(op.code());
+        return is_relaxed_push_data(op.code());
     };
 
     return std::all_of(stack().begin(), stack().end(), push);
@@ -700,32 +699,38 @@ script_pattern script::pattern() const
     return script_pattern::non_standard;
 }
 
-inline size_t multisig_or_default_sigops(bool enabled, opcode last)
-{
-    return enabled && operation::is_positive(last) ?
-        operation::opcode_to_positive(last) : multisig_default_sigops;
-}
-
-// See BIP16.
 // TODO: distinct cache property for serialized_script total.
-size_t script::sigops(bool serialized_script) const
+size_t script::sigops(bool embedded) const
 {
     size_t total = 0;
     auto preceding = opcode::reserved_255;
+
+    //*************************************************************************
+    // CONSENSUS: this short-circuits sigop counting but ultimately has no
+    // effect since p2sh sigops are not counted for coinbase txs and that
+    // would be the only case in which a non-push-data p2sh input script would
+    // not invalidate the block, due to the p2sh push data check. So we avoid
+    // the check here as a sigop count optimization.
+    //*************************************************************************
+    ////if (embedded && !is_relaxed_push_data_only())
+    ////    return total;
 
     // The first stack access must be method-based to guarantee the cache.
     for (const auto& op: stack())
     {
         const auto code = op.code();
 
-        if (code == opcode::checksig || code == opcode::checksigverify)
+        if (code == opcode::checksig ||
+            code == opcode::checksigverify)
         {
             total++;
         }
-        else if (code == opcode::checkmultisig || 
+        else if (code == opcode::checkmultisig ||
             code == opcode::checkmultisigverify)
         {
-            total += multisig_or_default_sigops(serialized_script, preceding);
+            total += embedded && operation::is_positive(preceding) ?
+                operation::opcode_to_positive(preceding) :
+                multisig_default_sigops;
         }
 
         preceding = code;
@@ -734,41 +739,36 @@ size_t script::sigops(bool serialized_script) const
     return total;
 }
 
-// See BIP16.
-// TODO: cache (default to max_size_t sentinel).
-size_t script::pay_script_hash_sigops(const script& prevout) const
-{
-    // The prevout script is not p2sh, so no signature increment.
-    if (prevout.pattern() != script_pattern::pay_script_hash)
-        return 0;
-
-    // The first stack access must be method-based to guarantee the cache.
-    // Conditions added by EKV on 2016.09.15 for safety and BIP16 consistency.
-    // Only push data operations allowed in script, so no signature increment.
-    if (stack().empty() || !is_push_data_only())
-        return 0;
-
-    script eval;
-
-    // Treat failure as zero signatures (data).
-    if (!eval.from_data(stack_.back().data(), false))
-        return 0;
-
-    // Count the sigops in the serialized script using BIP16 rules.
-    return eval.sigops(true);
-}
-
+// This is used internally as an optimization over using script::pattern.
 bool script::is_pay_to_script_hash(uint32_t flags) const
 {
-    return (is_enabled(flags, rule_fork::bip16_rule) &&
-        (pattern() == script_pattern::pay_script_hash));
+    // The prevout stack access must be method-based to guarantee the cache.
+    return is_enabled(flags, rule_fork::bip16_rule) &&
+        is_pay_script_hash_pattern(stack());
+}
+
+// TODO: cache (default to max_size_t sentinel).
+size_t script::pay_script_hash_sigops(const script& prevout_script) const
+{
+    // We count p2sh sigops when the previout script is p2sh.
+    if (!prevout_script.is_pay_to_script_hash(rule_fork::bip16_rule))
+        return 0;
+
+    // Obtain the embedded script from the last input script item (data).
+    script embedded;
+
+    // The first stack access must be method-based to guarantee the cache.
+    if (stack().empty() || !embedded.from_data(stack_.back().data(), false))
+        return 0;
+
+    // Count the sigops in the embedded script using BIP16 rules.
+    return embedded.sigops(true);
 }
 
 // Validation.
 //-----------------------------------------------------------------------------
 // static
 
-// TODO: return detailed result code indicating failure condition.
 code script::verify(const transaction& tx, uint32_t input_index,
     uint32_t flags)
 {
@@ -796,9 +796,10 @@ code script::verify(const transaction& tx, uint32_t input_index,
         return error::validate_inputs_failed;
 
     // Copy the input context stack for evaluation of the prevout script.
+    // We need to preserve the input stack for potential p2sh evaluation.
     evaluation_context out_context(flags, input_context.stack);
 
-    // Evaluate the output script.
+    // Evaluate the prevout script against the input stack.
     if (!interpreter::run(tx, input_index, prevout_script, out_context))
         return error::validate_inputs_failed;
 
@@ -818,30 +819,26 @@ code script::verify(const transaction& tx, uint32_t input_index,
 code script::pay_hash(const transaction& tx, uint32_t input_index,
     const script& input_script, evaluation_context& input_context)
 {
-    // Only push data operations allowed in script.
-    if (!input_script.is_push_data_only())
+    if (!input_script.is_relaxed_push_data_only())
         return error::validate_inputs_failed;
 
-    // Use the last stack item as the serialized script.
-    // input_context.stack cannot be empty here because out_context is true.
-    const auto& serialized = input_context.stack.back();
-    script eval;
+    script embedded;
 
-    // Always process a serialized script as fallback since it can be data.
-    if (!eval.from_data(serialized, false))
+    // The last stack item is the embedded script.
+    // input_context.stack cannot be empty here because out_context was true.
+    if (!embedded.from_data(input_context.pop(), false))
         return error::validate_inputs_failed;
 
-    // Pop last item and use popped stack for evaluation of the eval script.
-    input_context.stack.pop_back();
-    const auto flags = input_context.flags();
-    evaluation_context eval_context(flags, input_context.stack);
+    // Use popped stack for evaluation of the eval script.
+    evaluation_context context(input_context.flags(),
+        std::move(input_context.stack));
 
-    // Evaluate the eval (serialized) script.
-    if (!interpreter::run(tx, input_index, eval, eval_context))
+    // Evaluate the embedded script.
+    if (!interpreter::run(tx, input_index, embedded, context))
         return error::validate_inputs_failed;
 
     // Return the stack state.
-    return eval_context.stack_result() ? error::success :
+    return context.stack_result() ? error::success :
         error::validate_inputs_failed;
 }
 
